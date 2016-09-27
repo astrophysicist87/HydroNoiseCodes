@@ -91,13 +91,13 @@ int main()
 	if (do_HBT_calc)
 	{
 		alpha0 = 1.0 / integrate_2D(alpha_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
-		for (int iDy = 0; iDy < 61; iDy++)
+		for (int iDy = 0; iDy < 10; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
-			//double y1 = Delta_y;
-			//double y2 = 0.0;
-			double y1 = 0.5*Delta_y;
-			double y2 = -0.5*Delta_y;
+			double y1 = Delta_y;
+			double y2 = 0.0;
+			//double y1 = 0.5*Delta_y;
+			//double y2 = -0.5*Delta_y;
 			complex<double> sum(0,0);
 			for (int ik = 0; ik < n_k_pts; ++ik)
 			{
@@ -115,9 +115,9 @@ int main()
 			}
 
 			//complex<double> result = sum;
-			double mean_R2l_vs_y = -0.25*tauf*tauf*get_phi0(2.0*y1);
-			complex<double> result = (kappa / (2.0 *M_PI * kappap)) * sum / mean_R2l_vs_y;
-			cout << Delta_y << "   " << sum.real() << "   " << mean_R2l_vs_y << "   " << result.real() << endl;
+			double mean_R2l_vs_y = -0.25*tauf*tauf*get_phi0(y1);
+			complex<double> result = sum / (2.*M_PI*mean_R2l_vs_y);
+			cout << Delta_y << "   " << sum << "   " << sum.real() << "   " << mean_R2l_vs_y << "   " << result << "   " << result.real() << endl;
 		}
 	}
 

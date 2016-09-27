@@ -32,23 +32,6 @@ extern double * k_pts, * k_wts;
 extern double * tau_pts, * tau_wts;
 
 // my additional functions
-/*double zeta(double x1, double x2);
-double gamma(double x1, double x2);
-double krho(double x);
-double komega(double x);
-double alpha_int(double x1, double x2);
-double phi0_int(double x1, double x2);
-double sym(double x, double xp);
-double phi(double y, double x, double xp);
-double phip(double y, double x, double xp);
-double phim(double y, double x, double xp);
-double phipp(double y, double x, double xp);
-double phimp(double y, double x, double xp);
-double phipp00(double xi1, double xi2);
-double phipp20(double xi1, double xi2);
-double phipp02(double xi1, double xi2);
-double phimp11(double xi1, double xi2);*/
-
 inline double Temperature(double tau)
 {
 	return (T0 * pow(tau0 / tau, vs*vs));
@@ -239,12 +222,12 @@ inline double gamma(double x1, double x2)
 inline double krho(double x)
 {
     double chx = cosh(x);
-    return ( (vs*vs / Tf) * chx * chx );
+    return ( (tauf*tauf*vs*vs / Tf) * chx * chx );
 }
 
 inline double komega(double x)
 {
-    return ( cosh(x) * sinh(x) );
+    return ( tauf*tauf*cosh(x) * sinh(x) / Tf );
 }
 
 inline double alpha_int(double x1, double x2)
@@ -471,16 +454,25 @@ inline complex<double> Fbt_rho(double y, double k)
 	double cy = cosh(y), sy = sinh(y);
 	//phi0 = integrate_2D(phi0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
 	phi0 = get_phi0(y);
+	complex<double> sum(0,0);
+	for (int ixi = 0; ixi < n_xi_pts; ixi++)
+	for (int ixip = 0; ixip < n_xi_pts; ixip++)
+	{
+		double xi = xi_pts_minf_inf[ixi];
+		double xip = xi_pts_minf_inf[ixip];
+		sum += xi_wts_minf_inf[ixi] * xi_wts_minf_inf[ixip] * krho(xi) * exp(i * k * xi) * phi(y, xi, xip);
+	}
 	//cout << "Fbt_rho(): " << k << "   " << Fbt_rho_pp00(y, k) << "   " << Fbt_rho_pp20(y, k) << "   " << Fbt_rho_pp02(y, k) << "   " << Fbt_rho_mp11(y, k) << endl;
 	return (
-				Fbt_rho_pp00(y, k)
-					+ cy*cy*Fbt_rho_pp20(y, k)
-					+ sy*sy*Fbt_rho_pp02(y, k)
-					+ sy*cy*Fbt_rho_mp11(y, k)
+				//Fbt_rho_pp00(y, k)
+				//	+ cy*cy*Fbt_rho_pp20(y, k)
+				//	+ sy*sy*Fbt_rho_pp02(y, k)
+				//	+ sy*cy*Fbt_rho_mp11(y, k)
 				//Fbt_rho_pp00(y, k)
 				//	+ Fbt_rho_pp20(y, k)
 				//	+ Fbt_rho_pp02(y, k)
 				//	+ Fbt_rho_mp11(y, k)
+				exp(-i * k * y) * sum
 			);
 }
 
@@ -489,15 +481,19 @@ inline complex<double> Fbt_omega(double y, double k)
 	double cy = cosh(y), sy = sinh(y);
 	//phi0 = integrate_2D(phi0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
 	phi0 = get_phi0(y);
-	return (
-				/*Fbt_omega_pp00(y, k)
-					+ cy*cy*Fbt_omega_pp20(y, k)
-					+ sy*sy*Fbt_omega_pp02(y, k)
-					+ sy*cy*Fbt_omega_mp11(y, k)*/
-				Fbt_omega_pp00(y, k)
-					+ cy*cy*Fbt_omega_pp20(y, k)
-					+ sy*sy*Fbt_omega_pp02(y, k)
-					+ sy*cy*Fbt_omega_mp11(y, k)
+	complex<double> sum(0,0);
+	for (int ixi = 0; ixi < n_xi_pts; ixi++)
+	for (int ixip = 0; ixip < n_xi_pts; ixip++)
+	{
+		double xi = xi_pts_minf_inf[ixi];
+		double xip = xi_pts_minf_inf[ixip];
+		sum += xi_wts_minf_inf[ixi] * xi_wts_minf_inf[ixip] * komega(xi) * exp(i * k * xi) * phi(y, xi, xip);
+	}	return (
+				//Fbt_omega_pp00(y, k)
+				//	+ cy*cy*Fbt_omega_pp20(y, k)
+				//	+ sy*sy*Fbt_omega_pp02(y, k)
+				//	+ sy*cy*Fbt_omega_mp11(y, k)
+				exp(-i * k * y) * sum
 			);
 }
 
