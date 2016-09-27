@@ -297,7 +297,7 @@ inline double phip(double y, double x, double xp)
 
 inline double phim(double y, double x, double xp)
 {
-    return (0.5 * (phi(y, x, xp) - phi(y, x, xp)));
+    return (0.5 * (phi(y, x, xp) - phi(y, -x, xp)));
 }
 
 inline double phipp(double y, double x, double xp)
