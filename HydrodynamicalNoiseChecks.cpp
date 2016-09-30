@@ -15,6 +15,7 @@ using namespace std;
 
 bool do_1p_calc = false;
 bool do_HBT_calc = true;
+bool scale_out_y_dependence = true;
 
 const double infinity = 10.0;
 double vs, Neff, tauf, tau0, Tf, T0, nu, nuVB, ds, A, m;
@@ -90,34 +91,47 @@ int main()
 
 	if (do_HBT_calc)
 	{
-		alpha0 = 1.0 / integrate_2D(alpha_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
-		for (int iDy = 0; iDy < 10; iDy++)
+		alpha0 = 1.0 / integrate_2D(alpha0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
+		phi0 = integrate_2D(phi0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
+		for (int iDy = 0; iDy < 1; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
+			//option #1
 			double y1 = Delta_y;
 			double y2 = 0.0;
+			//option #2
 			//double y1 = 0.5*Delta_y;
 			//double y2 = -0.5*Delta_y;
+			//option #3
+			//double y1 = Delta_y;
+			//double y2 = Delta_y;
+//cout << alpha0 << "   " << phi0 << endl;
+			double cy1 = cosh(y1);
+			double cy2 = cosh(y2);
+			double cDy = cosh(y1-y2);
+			double scale_out_y_dep_factor = 1.0;
+			if (scale_out_y_dependence)
+				scale_out_y_dep_factor = cy1*cy1*cy2*cy2 / (cDy*cDy);
 			complex<double> sum(0,0);
 			for (int ik = 0; ik < n_k_pts; ++ik)
 			{
 				double k = k_pts[ik];
-				complex<double> Ftr1 = Fbt_rho(y1, k);
-				complex<double> Ftr2 = Fbt_rho(y2, k);
-				complex<double> Fto1 = Fbt_omega(y1, k);
-				complex<double> Fto2 = Fbt_omega(y2, k);
-				//cout << k << "   " << Ftr1 << "   " << Ftr2 << "   " << Fto1 << "   " << Fto2 << endl;
-				sum += k_wts[ik]
-						* ( Ftr1 * conj(Ftr2) * Ctilde_rho_rho(k)
-							+ Ftr1 * conj(Fto2) * Ctilde_rho_omega(k)
-							+ Fto1 * conj(Ftr2) * Ctilde_omega_rho(k)
-							+ Fto1 * conj(Fto2) * Ctilde_omega_omega(k) );
+				complex<double> gt_r = gt_rho(k);
+				complex<double> gt_o = gt_omega(k);
+				sum += k_wts[ik] * exp(i * k * Delta_y)
+						* ( gt_r * conj(gt_r) * Ctilde_rho_rho(k)
+							+ gt_r * conj(gt_o) * Ctilde_rho_omega(k)
+							+ gt_o * conj(gt_r) * Ctilde_omega_rho(k)
+							+ gt_o * conj(gt_o) * Ctilde_omega_omega(k) )
+						/ (cy1*cy1*cy2*cy2);
+//cout << k << "   " << gt_r * conj(gt_r) << "   " << gt_r * conj(gt_o) << "   " << gt_o * conj(gt_r) << "   " << gt_o * conj(gt_o) << "   "
+//		<< Ctilde_rho_rho(k) << "   " << Ctilde_rho_omega(k)<< "   " << Ctilde_omega_rho(k) << "   " << Ctilde_omega_omega(k) << endl;
 			}
 
 			//complex<double> result = sum;
-			double mean_R2l_vs_y = -0.25*tauf*tauf*get_phi0(y1);
-			complex<double> result = sum / (2.*M_PI*mean_R2l_vs_y);
-			cout << Delta_y << "   " << sum << "   " << sum.real() << "   " << mean_R2l_vs_y << "   " << result << "   " << result.real() << endl;
+			double mean_R2l_vs_y = -0.5*tauf*tauf*phi0 / (cDy*cDy);
+			complex<double> result = scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_y);
+			cout << Delta_y << "   " << sum.real() << "   " << mean_R2l_vs_y << "   " << result.real() << endl;
 		}
 	}
 
