@@ -41,7 +41,7 @@ double integrate_2D(double (*f)(double, double), double * xpts, double * ypts, d
 	return (sum);
 }
 
-double integrate_1D(double (*f)(double), double Lx, int nx)
+/*double integrate_1D(double (*f)(double), double Lx, int nx)
 {
     double sum = 0.0;
     for (int ix = 1; ix < nx; ix++)
@@ -69,5 +69,5 @@ double integrate_2D(double (*f)(double, double), double Lx, double Ly, int nx, i
 	}
 
     return (sum);
-}
+}*/
 

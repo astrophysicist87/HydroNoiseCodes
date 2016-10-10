@@ -242,7 +242,7 @@ inline double phi0_int(double x1, double x2)
     double z = zeta(x1, x2);
     double g = gamma(x1,x2);
     double g4 = incompleteGamma4(m/z);
-    return (-alpha0 * g * cosh(x1) * cosh(x2) * pow(z, 4.0) * g4);
+    return (alpha0 * g * cosh(x1) * cosh(x2) * pow(z, 4.0) * g4);
 }
 
 inline double sym(double x, double xp)
@@ -260,8 +260,8 @@ inline complex<double> gt_rho(double k)
 	{
 		double xi = xi_pts_minf_inf[ixi];
 		double xip = xi_pts_minf_inf[ixip];
-		sum += xi_wts_minf_inf[ixi] * xi_wts_minf_inf[ixip] * alpha0 * krho(xi) * exp(-i * k * xi) * (gamma(xi,xip) + phi0) * sym(xi, xip);
-//cout << xi << "   " << xip << "   " << krho(xi) << "   " << exp(-i * k * xi) << "   " << alpha0*(gamma(xi,xip) + phi0) * sym(xi, xip) << endl;
+		sum += xi_wts_minf_inf[ixi] * xi_wts_minf_inf[ixip] * alpha0 * krho(xi) * exp(-i * k * xi) * (gamma(xi,xip) - phi0) * sym(xi, xip);
+//cout << xi << "   " << xip << "   " << krho(xi) << "   " << exp(-i * k * xi) << "   " << alpha0*(gamma(xi,xip) - phi0) * sym(xi, xip) << endl;
 	}
 	return (sum);
 }
@@ -275,7 +275,7 @@ inline complex<double> gt_omega(double k)
 	{
 		double xi = xi_pts_minf_inf[ixi];
 		double xip = xi_pts_minf_inf[ixip];
-		sum += xi_wts_minf_inf[ixi] * xi_wts_minf_inf[ixip] * alpha0 * komega(xi) * exp(-i * k * xi) * (gamma(xi,xip) + phi0) * sym(xi, xip);
+		sum += xi_wts_minf_inf[ixi] * xi_wts_minf_inf[ixip] * alpha0 * komega(xi) * exp(-i * k * xi) * (gamma(xi,xip) - phi0) * sym(xi, xip);
 	}
 	return (sum);
 }

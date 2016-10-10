@@ -17,13 +17,13 @@ bool do_1p_calc = false;
 bool do_HBT_calc = true;
 bool scale_out_y_dependence = true;
 
-const double infinity = 10.0;
+const double infinity = 15.0;
 double vs, Neff, tauf, tau0, Tf, T0, nu, nuVB, ds, A, m;
 double mByT, alpha, alpha0, phi0;
 
-const int n_xi_pts = 80;
-const int n_k_pts = 80;
-const int n_tau_pts = 80;
+const int n_xi_pts = 200;
+const int n_k_pts = 200;
+const int n_tau_pts = 200;
 double * xi_pts_0_inf, * xi_wts_0_inf, * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
@@ -93,7 +93,7 @@ int main()
 	{
 		alpha0 = 1.0 / integrate_2D(alpha0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
 		phi0 = integrate_2D(phi0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
-		for (int iDy = 0; iDy < 1; iDy++)
+		for (int iDy = 0; iDy < 101; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
 			//option #1
@@ -129,9 +129,9 @@ int main()
 			}
 
 			//complex<double> result = sum;
-			double mean_R2l_vs_y = -0.5*tauf*tauf*phi0 / (cDy*cDy);
+			double mean_R2l_vs_y = 0.5*tauf*tauf*phi0 / (cDy*cDy);
 			complex<double> result = scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_y);
-			cout << Delta_y << "   " << sum.real() << "   " << mean_R2l_vs_y << "   " << result.real() << endl;
+			cout << Delta_y /*<< "   " << sum.real() << "   " << mean_R2l_vs_y*/ << "   " << result.real() << endl;
 		}
 	}
 
