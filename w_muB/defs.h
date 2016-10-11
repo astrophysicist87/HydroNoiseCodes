@@ -9,7 +9,8 @@
 #include <complex>
 #include <cmath>
 
-//#include <gsl/gsl_integration.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_multiroots.h>
 
 using namespace std;
 
@@ -32,10 +33,11 @@ extern const int n_tau_pts;
 extern double * xi_pts_0_inf, * xi_wts_0_inf, * xi_pts_minf_inf, * xi_wts_minf_inf;
 extern double * k_pts, * k_wts;
 extern double * tau_pts, * tau_wts;
+extern double * T_pts, * mu_pts;
 
 extern double exp_delta, exp_gamma, exp_nu;
 extern double T0, mu0, Tc, Pc, nc, sc, wc, muc;
-extern double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD;
+extern double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD, si, ni;
 
 //general functions
 inline double Omega(double x)
@@ -80,16 +82,6 @@ inline double guess_T(double tau)
 inline double guess_mu(double tau)
 {
 	return (mui * pow(taui / tau, 1.0/3.0));
-}
-
-inline double T(double tau)
-{
-
-}
-
-inline double mu(double tau)
-{
-
 }
 
 ///////////////////////////////////////////////////////////
@@ -182,7 +174,7 @@ inline double cP(double T, double mu)
 	double tp = (T/mu) * (2.0*A4*T*T + A2*mu*mu - C0) / (A2*T*T + 2.0*A0*mu*mu);
 	double tm = 2.0*A2*T*mu / (A2*T*T + 6.0*A0*mu*mu);
 	return (
-		cV(T,mu) + T * chi_B(T,mu) * (tp - tm) * (tp - tm)
+		0.0*cV(T,mu) + T * chi_B(T,mu) * (tp - tm) * (tp - tm)
 	);
 }
 inline double Delta_DT(double T, double mu)
@@ -257,7 +249,9 @@ inline double alpha(double T, double mu)
 inline complex<double> beta(double T, double mu, double k)
 {
 	double vsig2 = vsigma2(T, mu);
-	return (std::sqrt(std::complex<double>(0.25*(1.0-vsig2)*(1.0-vsig2) - vsig2*k*k)));
+	return (
+		std::sqrt( std::complex<double>( 0.25*(1.0-vsig2)*(1.0-vsig2) - vsig2*k*k ) )
+	);
 }
 
 inline double norm_int(double x)
@@ -271,7 +265,7 @@ inline double Fs(double x)
 	double cx = cosh(x);
 	
 	double c1 = sf * chi_tilde_mu_mu;
-	double c2 = sf * (chi_tilde_T_mu + chi_tilde_mu_mu * muf / Tf);
+	double c2 = -sf * (chi_tilde_T_mu + chi_tilde_mu_mu * muf / Tf);
 
 	return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (cx*cx) );
 }
@@ -280,13 +274,17 @@ inline double Fomega(double x)
 {
 	double cx = cosh(x);
 	
-	return (tanh(x)*incompleteGamma4(mByT * cx) / (cx*cx));
+	return (Tf * tanh(x)*incompleteGamma4(mByT * cx) / (cx*cx));
 }
 
 inline double Fn(double x)
 {
 	double cx = cosh(x);
-	return (tanh(x)*incompleteGamma4(mByT * cx) / (cx*cx));
+	
+	double c1 = -sf * chi_tilde_T_mu;
+	double c2 = sf * (chi_tilde_T_T + chi_tilde_T_mu * muf / Tf);
+
+	return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (cx*cx) );
 }
 
 inline complex<double> Ftilde_s(double k)
@@ -304,10 +302,14 @@ inline complex<double> Ftilde_n(double k)
 	return (integrate_1D_FT(Fn, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts, k));
 }
 
-inline complex<double> Gtilde_s(double k, double t, double t_p)
+//inline complex<double> Gtilde_s(double k, double t, double t_p)
+inline complex<double> Gtilde_s(double k, double t, int i_t_p)
 {
-	double T_loc = T(t);
-	double mu_loc = mu(t);
+	//double T_loc = T(t);
+	//double mu_loc = mu(t);
+	double t_p = tau_pts[i_t_p];
+	double T_loc = Tf;		//second argument always evaluated at t = tau_f
+	double mu_loc = muf;	//second argument always evaluated at t = tau_f
 	double a = alpha(T_loc, mu_loc);
 	complex<double> b = beta(T_loc, mu_loc, k);
 	double t_by_tp = t / t_p;
@@ -318,14 +320,18 @@ inline complex<double> Gtilde_s(double k, double t, double t_p)
 	complex<double> f1 = (a/b)*sinh(b*log(t_by_tp)) + cosh(b*log(t_by_tp));
 
 	return (
-		(-i * k *mu(t) / (T(t) * vsigma2_at_t) ) * (f0 + pref*f1)
+		(-i * k *mu_loc / (T_loc * vsigma2_at_t) ) * (f0 + pref*f1)
 	);
 }
 
-inline complex<double> Gtilde_omega(double k, double t, double t_p)
+//inline complex<double> Gtilde_omega(double k, double t, double t_p)
+inline complex<double> Gtilde_omega(double k, double t, int i_t_p)
 {
-	double T_loc = T(t);
-	double mu_loc = mu(t);
+	//double T_loc = T(t);
+	//double mu_loc = mu(t);
+	double t_p = tau_pts[i_t_p];
+	double T_loc = Tf;		//second argument always evaluated at t = tau_f
+	double mu_loc = muf;	//second argument always evaluated at t = tau_f
 	double a = alpha(T_loc, mu_loc);
 	double t_by_tp = t / t_p;
 	complex<double> b = beta(T_loc, mu_loc, k);
@@ -337,10 +343,14 @@ inline complex<double> Gtilde_omega(double k, double t, double t_p)
 	);
 }
 
-inline complex<double> Gtilde_n(double k, double t, double t_p)
+//inline complex<double> Gtilde_n(double k, double t, double t_p)
+inline complex<double> Gtilde_n(double k, double t, int i_t_p)
 {
-	double T_loc = T(t);
-	double mu_loc = mu(t);
+	//double T_loc = T(t);
+	//double mu_loc = mu(t);
+	double t_p = tau_pts[i_t_p];
+	double T_loc = Tf;		//second argument always evaluated at t = tau_f
+	double mu_loc = muf;	//second argument always evaluated at t = tau_f
 	double a = alpha(T_loc, mu_loc);
 	complex<double> b = beta(T_loc, mu_loc, k);
 	double t_by_tp = t / t_p;
@@ -351,7 +361,7 @@ inline complex<double> Gtilde_n(double k, double t, double t_p)
 	complex<double> f1 = (a/b)*sinh(b*log(t_by_tp)) + cosh(b*log(t_by_tp));
 
 	return (
-		(i * k *mu(t) / (T(t) * vsigma2_at_t) ) * (f0 + pref*f1)
+		(i * k / vsigma2_at_t ) * (f0 + pref*f1)
 	);
 }
 
@@ -361,14 +371,19 @@ inline complex<double> Ctilde_s_s(double k)
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		double t_loc = tau_pts[it];
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		//double T_loc = T(t_loc);
+		//double mu_loc = mu(t_loc);
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		if (abs( 1.0 - ni*taui/t_loc/n(T_loc, mu_loc) ) > 1.e-6 || abs(1.0 - si*taui/t_loc/s(T_loc, mu_loc) ) > 1.e-6 )
+			cout << n(T_loc, mu_loc) << "   " << ni*taui/t_loc << "   " << s(T_loc, mu_loc) << "   " << si*taui/t_loc << endl;
 		sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
-				* Gtilde_s(k, tauf, t_loc) * Gtilde_s(-k, tauf, t_loc);
+				* Gtilde_s(k, tauf, it) * Gtilde_s(-k, tauf, it);
+				//* Gtilde_s(k, tauf, t_loc) * Gtilde_s(-k, tauf, t_loc);
 	}
 
 	return (
-		(4.0*M_PI/A) * sum
+		sum/A
 	);
 }
 
@@ -378,14 +393,19 @@ inline complex<double> Ctilde_s_omega(double k)
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		double t_loc = tau_pts[it];
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		//double T_loc = T(t_loc);
+		//double mu_loc = mu(t_loc);
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		if (abs( n(T_loc, mu_loc) - ni*taui/t_loc ) > 1.e-6 || abs( s(T_loc, mu_loc) - si*taui/t_loc ) > 1.e-6 )
+			cout << n(T_loc, mu_loc) << "   " << ni*taui/t_loc << "   " << s(T_loc, mu_loc) << "   " << si*taui/t_loc << endl;
 		sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
-				* Gtilde_s(k, tauf, t_loc) * Gtilde_omega(-k, tauf, t_loc);
+				* Gtilde_s(k, tauf, it) * Gtilde_omega(-k, tauf, it);
+				//* Gtilde_s(k, tauf, t_loc) * Gtilde_omega(-k, tauf, t_loc);
 	}
 
 	return (
-		(4.0*M_PI/A) * sum
+		sum/A
 	);
 }
 
@@ -395,14 +415,19 @@ inline complex<double> Ctilde_s_n(double k)
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		double t_loc = tau_pts[it];
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		//double T_loc = T(t_loc);
+		//double mu_loc = mu(t_loc);
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		if (abs( n(T_loc, mu_loc) - ni*taui/t_loc ) > 1.e-6 || abs( s(T_loc, mu_loc) - si*taui/t_loc ) > 1.e-6 )
+			cout << n(T_loc, mu_loc) << "   " << ni*taui/t_loc << "   " << s(T_loc, mu_loc) << "   " << si*taui/t_loc << endl;
 		sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
-				* Gtilde_s(k, tauf, t_loc) * Gtilde_n(-k, tauf, t_loc);
+				* Gtilde_s(k, tauf, it) * Gtilde_n(-k, tauf, it);
+				//* Gtilde_s(k, tauf, t_loc) * Gtilde_n(-k, tauf, t_loc);
 	}
 
 	return (
-		(4.0*M_PI/A) * sum
+		sum/A
 	);
 }
 
@@ -412,14 +437,19 @@ inline complex<double> Ctilde_omega_s(double k)
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		double t_loc = tau_pts[it];
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		//double T_loc = T(t_loc);
+		//double mu_loc = mu(t_loc);
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		if (abs( n(T_loc, mu_loc) - ni*taui/t_loc ) > 1.e-6 || abs( s(T_loc, mu_loc) - si*taui/t_loc ) > 1.e-6 )
+			cout << n(T_loc, mu_loc) << "   " << ni*taui/t_loc << "   " << s(T_loc, mu_loc) << "   " << si*taui/t_loc << endl;
 		sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
-				* Gtilde_omega(k, tauf, t_loc) * Gtilde_s(-k, tauf, t_loc);
+				* Gtilde_omega(k, tauf, it) * Gtilde_s(-k, tauf, it);
+				//* Gtilde_omega(k, tauf, t_loc) * Gtilde_s(-k, tauf, t_loc);
 	}
 
 	return (
-		(4.0*M_PI/A) * sum
+		sum/A
 	);
 }
 
@@ -429,14 +459,19 @@ inline complex<double> Ctilde_omega_omega(double k)
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		double t_loc = tau_pts[it];
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		//double T_loc = T(t_loc);
+		//double mu_loc = mu(t_loc);
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		if (abs( n(T_loc, mu_loc) - ni*taui/t_loc ) > 1.e-6 || abs( s(T_loc, mu_loc) - si*taui/t_loc ) > 1.e-6 )
+			cout << n(T_loc, mu_loc) << "   " << ni*taui/t_loc << "   " << s(T_loc, mu_loc) << "   " << si*taui/t_loc << endl;
 		sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
-				* Gtilde_omega(k, tauf, t_loc) * Gtilde_omega(-k, tauf, t_loc);
+				* Gtilde_omega(k, tauf, it) * Gtilde_omega(-k, tauf, it);
+				//* Gtilde_omega(k, tauf, t_loc) * Gtilde_omega(-k, tauf, t_loc);
 	}
 
 	return (
-		(4.0*M_PI/A) * sum
+		sum/A
 	);
 }
 
@@ -446,14 +481,19 @@ inline complex<double> Ctilde_omega_n(double k)
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		double t_loc = tau_pts[it];
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		//double T_loc = T(t_loc);
+		//double mu_loc = mu(t_loc);
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		if (abs( n(T_loc, mu_loc) - ni*taui/t_loc ) > 1.e-6 || abs( s(T_loc, mu_loc) - si*taui/t_loc ) > 1.e-6 )
+			cout << n(T_loc, mu_loc) << "   " << ni*taui/t_loc << "   " << s(T_loc, mu_loc) << "   " << si*taui/t_loc << endl;
 		sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
-				* Gtilde_omega(k, tauf, t_loc) * Gtilde_n(-k, tauf, t_loc);
+				* Gtilde_omega(k, tauf, it) * Gtilde_n(-k, tauf, it);
+				//* Gtilde_omega(k, tauf, t_loc) * Gtilde_n(-k, tauf, t_loc);
 	}
 
 	return (
-		(4.0*M_PI/A) * sum
+		sum/A
 	);
 }
 
@@ -463,14 +503,19 @@ inline complex<double> Ctilde_n_s(double k)
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		double t_loc = tau_pts[it];
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		//double T_loc = T(t_loc);
+		//double mu_loc = mu(t_loc);
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		if (abs( n(T_loc, mu_loc) - ni*taui/t_loc ) > 1.e-6 || abs( s(T_loc, mu_loc) - si*taui/t_loc ) > 1.e-6 )
+			cout << n(T_loc, mu_loc) << "   " << ni*taui/t_loc << "   " << s(T_loc, mu_loc) << "   " << si*taui/t_loc << endl;
 		sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
-				* Gtilde_n(k, tauf, t_loc) * Gtilde_s(-k, tauf, t_loc);
+				* Gtilde_n(k, tauf, it) * Gtilde_s(-k, tauf, it);
+				//* Gtilde_n(k, tauf, t_loc) * Gtilde_s(-k, tauf, t_loc);
 	}
 
 	return (
-		(4.0*M_PI/A) * sum
+		sum/A
 	);
 }
 
@@ -480,14 +525,19 @@ inline complex<double> Ctilde_n_omega(double k)
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		double t_loc = tau_pts[it];
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		//double T_loc = T(t_loc);
+		//double mu_loc = mu(t_loc);
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		if (abs( n(T_loc, mu_loc) - ni*taui/t_loc ) > 1.e-6 || abs( s(T_loc, mu_loc) - si*taui/t_loc ) > 1.e-6 )
+			cout << n(T_loc, mu_loc) << "   " << ni*taui/t_loc << "   " << s(T_loc, mu_loc) << "   " << si*taui/t_loc << endl;
 		sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
-				* Gtilde_n(k, tauf, t_loc) * Gtilde_omega(-k, tauf, t_loc);
+				* Gtilde_n(k, tauf, it) * Gtilde_omega(-k, tauf, it);
+				//* Gtilde_n(k, tauf, t_loc) * Gtilde_omega(-k, tauf, t_loc);
 	}
 
 	return (
-		(4.0*M_PI/A) * sum
+		sum/A
 	);
 }
 
@@ -497,14 +547,19 @@ inline complex<double> Ctilde_n_n(double k)
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		double t_loc = tau_pts[it];
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		//double T_loc = T(t_loc);
+		//double mu_loc = mu(t_loc);
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		if (abs( n(T_loc, mu_loc) - ni*taui/t_loc ) > 1.e-6 || abs( s(T_loc, mu_loc) - si*taui/t_loc ) > 1.e-6 )
+			cout << n(T_loc, mu_loc) << "   " << ni*taui/t_loc << "   " << s(T_loc, mu_loc) << "   " << si*taui/t_loc << endl;
 		sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
-				* Gtilde_n(k, tauf, t_loc) * Gtilde_n(-k, tauf, t_loc);
+				* Gtilde_n(k, tauf, it) * Gtilde_n(-k, tauf, it);
+				//* Gtilde_n(k, tauf, t_loc) * Gtilde_n(-k, tauf, t_loc);
 	}
 
 	return (
-		(4.0*M_PI/A) * sum
+		sum/A
 	);
 }
 
@@ -543,8 +598,6 @@ int print_state (size_t iter, gsl_multiroot_fsolver * s)
 		gsl_vector_get (s->f, 0), 
 		gsl_vector_get (s->f, 1));
 }
-
-
 
 int input_f (const gsl_vector * x, void * params, gsl_vector * f)
 {
@@ -586,14 +639,14 @@ void populate_T_and_mu_vs_tau()
 		gsl_s = gsl_multiroot_fsolver_alloc (gsl_T, 2);
 		gsl_multiroot_fsolver_set (gsl_s, &f, x);
 
-		print_state (iter, gsl_s);
+		//print_state (iter, gsl_s);
 
 		do
 		{
 			iter++;
 			status = gsl_multiroot_fsolver_iterate (gsl_s);
 
-			print_state (iter, gsl_s);
+			//print_state (iter, gsl_s);
 
 			if (status)   /* check if solver is stuck */
 				break;
@@ -602,7 +655,11 @@ void populate_T_and_mu_vs_tau()
 		}
 		while (status == GSL_CONTINUE && iter < 1000);
 
-		printf ("status = %s\n", gsl_strerror (status));
+		//printf ("status = %s\n", gsl_strerror (status));
+
+		//finally, store results
+		T_pts[it] = gsl_vector_get (gsl_s->x, 0);
+		mu_pts[it] = gsl_vector_get (gsl_s->x, 1);
 
 		gsl_multiroot_fsolver_free (gsl_s);
 		gsl_vector_free (x);

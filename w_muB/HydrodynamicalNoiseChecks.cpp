@@ -6,14 +6,15 @@
 #include <cstdlib>
 #include <complex>
 
-//#include <gsl/gsl_integration.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_multiroots.h>
 
 using namespace std;
 
 #include "defs.h"
 #include "gauss_quadrature.h"
 
-bool do_1p_calc = false;
+bool do_1p_calc = true;
 bool do_HBT_calc = true;
 bool scale_out_y_dependence = true;
 
@@ -24,14 +25,15 @@ double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
 double exp_delta, exp_gamma, exp_nu;
 double T0, mu0, Tc, Pc, nc, sc, wc, muc;
-double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD;
+double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD, si, ni;
 
-const int n_xi_pts = 200;
-const int n_k_pts = 200;
-const int n_tau_pts = 200;
+const int n_xi_pts = 500;
+const int n_k_pts = 500;
+const int n_tau_pts = 500;
 double * xi_pts_0_inf, * xi_wts_0_inf, * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
+double * T_pts, * mu_pts;
 
 int main(int argc, char *argv[])
 {
@@ -41,9 +43,9 @@ int main(int argc, char *argv[])
 	double ctTms[3] = {12739., 17872.4, 22182.7};
 	double ctTTs[3] = {1.00076e6, 970752., 934775.};
 	double sPERns[3] = {37.9844, 26.0847, 20.0631};
-	double taufs[3] = {3.04, 3.30, 3.68};
-	double sis[3] = {29.7527, 31.2566, 33.3389};	//fm^3
-	double nis[3] = {0.783289, 1.19827, 1.6617};	//fm^3
+	double taufs[3] = {3.0464, 3.3174, 3.6992};
+	double sis[3] = {29.7527, 31.2566, 33.3389};	//fm^{-3}
+	double nis[3] = {0.783289, 1.19827, 1.6617};	//fm^{-3}
 	double Tfs[3] = {152.478, 149.887, 146.722};
 	double mufs[3] = {187.98, 268.288, 340.174};
 	double muis[3] = {420.0, 620.0, 820.0};
@@ -83,8 +85,8 @@ int main(int argc, char *argv[])
 	exp_gamma = 1.24;
 	exp_nu = 0.63;
 	etaBYs = 1.0 / (4.0 * M_PI);
-	si = sis[chosen_trajectory];
-	ni = nis[chosen_trajectory];
+	si = pow(197.33, 3.0)*sis[chosen_trajectory];
+	ni = pow(197.33, 3.0)*nis[chosen_trajectory];
 
 	//set critical point quantities
 	Tc = 160.0;
@@ -123,16 +125,25 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, taui, tauf, tau_pts, tau_wts);
     tmp = gauss_quadrature(n_k_pts, 1, 0.0, 0.0, -infinity, infinity, k_pts, k_wts);
 
+	T_pts = new double [n_tau_pts];
+	mu_pts = new double [n_tau_pts];
+
+	//computes tau-dependence of T and mu for remainder of calculation
+	populate_T_and_mu_vs_tau();
+
 	//check Delta_lambda
-	for (int it = 1; it < 41; ++it)
+	/*for (int it = 1; it < n_tau_pts; ++it)
 	{
-		double t_loc = (double)it * 0.1;
-		double T_loc = T(t_loc);
-		double mu_loc = mu(t_loc);
+		double t_loc = tau_pts[it];
+		double T_loc = T_pts[it];
+		double mu_loc = mu_pts[it];
+		//double t_loc = 0.51 + (double)it * 0.1;
+		//double T_loc = interpolate1D(tau_pts, T_pts, t_loc, n_tau_pts, 1, false);
+		//double mu_loc = interpolate1D(tau_pts, mu_pts, t_loc, n_tau_pts, 1, false);
 		cout << chosen_trajectory + 1 << "   " << T_loc << "   " << mu_loc << "   " << t_loc << "   " << (1e-6)*Delta_lambda(T_loc, mu_loc) << endl;
 	}
 
-	if (1) return (0);
+	if (1) return (0);*/
 
 	if (do_1p_calc)
 	{
@@ -159,8 +170,10 @@ int main(int argc, char *argv[])
 							+ Ftn * conj(Ftn) * Ctilde_n_n(k) );
 			}
 
-			complex<double> result = (kappa / (2.0 *M_PI * kappap * norm)) * sum;
-			cout << Delta_y << "   " << result.real() << endl;
+			sum *= 197.33*197.33;  //hbarc^2 / hbarc
+
+			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf / 197.33 / (2.0*M_PI*M_PI * norm)) * sum;	//this is the one I find
+			cout << Delta_y << "   " << result.real() << "   " << sum.real() << "   " << exp(muf/Tf) << "   " << (tauf*Tf / 197.33) * ds*sum.real()/ (2.0*M_PI*M_PI * norm) << endl;
 		}
 	}
 
