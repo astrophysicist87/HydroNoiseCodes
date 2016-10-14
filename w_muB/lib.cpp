@@ -21,6 +21,11 @@ double integrate_1D(double (*f)(double), double * xpts, double * xwts, int nx)
     return (sum);
 }
 
+double integrate_1D_with_peak(double (*f)(double, void *), double a, double b, double xc, double width)
+{
+
+}
+
 complex<double> integrate_1D_FT(double (*f)(double), double * xpts, double * xwts, int nx, double k)
 {
     complex<double> sum = (0,0);
