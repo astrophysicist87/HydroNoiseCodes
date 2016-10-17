@@ -17,6 +17,7 @@ bool do_1p_calc = false;
 bool do_HBT_calc = true;
 bool scale_out_y_dependence = true;
 
+const double hbarC = 197.33;
 const double infinity = 15.0;
 double vs, Neff, tauf, tau0, Tf, T0, nu, nuVB, ds, A, m;
 double mByT, alpha, alpha0, phi0;
@@ -35,13 +36,13 @@ int main()
 	alpha = 0.5*(1.0 - vs*vs);
     Neff = 47.5;
     tauf = 10.0;
-    Tf = 150.0 / 197.33;
-    T0 = 600.0 / 197.33;
+    Tf = 150.0 / hbarC;
+    T0 = 600.0 / hbarC;
     nu = 1.0 / (3.0 * M_PI);
 	nuVB = nu;
     ds = 2.0;
     A = 1.0;
-    m = 139.57 / 197.33;
+    m = 139.57 / hbarC;
     tau0 = invTemperature(Tf);
 	mByT = m / Tf;
 
@@ -93,7 +94,7 @@ int main()
 	{
 		alpha0 = 1.0 / integrate_2D(alpha0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
 		phi0 = integrate_2D(phi0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
-		for (int iDy = 0; iDy < 101; iDy++)
+		for (int iDy = 0; iDy < 1; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
 			//option #1

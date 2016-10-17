@@ -15,15 +15,16 @@ using namespace std;
 #include "defs.h"
 #include "gauss_quadrature.h"
 
-bool do_1p_calc = true;
+bool do_1p_calc = false;
 bool do_HBT_calc = true;
+bool scale_out_y_dependence = true;
 const int particle_to_study = 1;	//1 is pion, 2 is proton
 
 const double hbarC = 197.33;
 const double k_infinity = 10.0;
 const double xi_infinity = 4.0;
 double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, A, m, sf;
-double mByT, alpha0, phi0;
+double mByT, alpha0, psi0;
 double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
 double exp_delta, exp_gamma, exp_nu;
@@ -31,11 +32,9 @@ double T0, mu0, Tc, Pc, nc, sc, wc, muc;
 double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD, si, ni;
 double a_at_tauf, vs2_at_tauf, vn2_at_tauf, vsigma2_at_tauf;
 
-const int n_xi_pts = 100;
-const int n_k_pts = 100;
-//const int n_tau_pts = 1000;
-int n_tau_pts;
-//const int n_tau_pts_dense = 250;
+const int n_xi_pts = 200;
+const int n_k_pts = 200;
+const int n_tau_pts = 200;
 double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
@@ -50,23 +49,18 @@ double * T_pts_upper, * mu_pts_upper;
 int main(int argc, char *argv[])
 {
 	//set parameters corresponding to all different possible trajectories
-	Ti = 250.0;		//initial trajectory temperature
+	Ti = 250.0 / hbarC;		//initial trajectory temperature
 	double muis[3] = {420.0, 620.0, 820.0};
 
-	//int chosen_trajectory = 1;	//numbering convention in paper
-	//int chosen_trajectory = atoi(argv[1]);
-	int chosen_trajectory = 3;
-	//int nt = atoi(argv[1]);
-	n_tau_pts = atoi(argv[1]);
-	int nt = 1000000;
+	int chosen_trajectory = atoi(argv[1]);
 	chosen_trajectory--;		//use for array indexing throughout
 
-	mui = muis[chosen_trajectory];
+	mui = muis[chosen_trajectory] / hbarC;
 
 	set_phase_diagram_and_EOS_parameters();
 
 	//other constants
-	m = (particle_to_study == 1) ? 139.57 : 939.0;
+	m = (particle_to_study == 1) ? 139.57 / hbarC : 939.0 / hbarC;
 	taui = 0.5;		//fm/c
 
 	si = s(Ti, mui);
@@ -74,12 +68,14 @@ int main(int argc, char *argv[])
 	sPERn = si / ni;
 
 	compute_Tf_and_muf();
-	if (particle_to_study == 1) muf = 1e-6;
+	//if (particle_to_study == 1) muf = 1e-6;
 
 	sf = s(Tf, muf);
 	tauf = si * taui / sf;
 
 	set_critical_point_parameters();
+
+	if (particle_to_study == 1) muf = 1e-6;
 
     // initialize other parameters
     nu = 1.0 / (3.0 * M_PI);
@@ -129,15 +125,12 @@ int main(int argc, char *argv[])
 	//computes tau-dependence of T and mu for remainder of calculation
 	populate_T_and_mu_vs_tau();
 
+	int nt = 1000000;
 	double max_DL, tauc, width;
 	break_up_integral(nt, max_DL, tauc, width);
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, taui, tauc, tau_pts_lower, tau_wts_lower);
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, tauc, tauf, tau_pts_upper, tau_wts_upper);
-    //tmp = gauss_quadrature(n_tau_pts_dense, 1, 0.0, 0.0, taui, tauf, tau_pts_middle, tau_wts_middle);
 	populate_T_and_mu_vs_tau_part2();
-	//cout << max_DL << "   " << tauc << "   " << tauf << "   " << width << endl;
-	//for (int it = 0; it < n_tau_pts; ++it)
-	//	cout << tau_pts_lower[it] << "   " << tau_wts_lower[it] << "   " << tau_pts_upper[it] << "   " << tau_wts_upper[it] << endl;
 
 	//if (1) return (0);
 
@@ -183,18 +176,19 @@ int main(int argc, char *argv[])
 							+ Ftn * conj(Ftn) * Ctnn );
 			}
 
-			sum *= hbarC*hbarC;  //hbarc^2 / hbarc
+			//sum *= hbarC*hbarC;  //hbarc^2 / hbarc
 
-			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf / hbarC / (2.0*M_PI*M_PI * norm)) * sum;	//this is the one I find
-			cout << n_tau_pts << "   " << Delta_y << "   " << result.real() /*<< "   " << sum.real() << "   " << exp(muf/Tf) << "   " << (tauf*Tf / hbarC) * ds*sum.real()/ (2.0*M_PI*M_PI * norm)*/ << endl;
+			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf /*/ hbarC*/ / (2.0*M_PI*M_PI * norm)) * sum;	//this is the one I find
+			cout << Delta_y << "   " << result.real() << endl;
 		}
 	}
 
-	/*if (do_HBT_calc)
+	if (do_HBT_calc)
 	{
-		alpha0 = 1.0 / integrate_2D(alpha0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
-		phi0 = integrate_2D(phi0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
-		for (int iDy = 0; iDy < 101; iDy++)
+		alpha0 = get_alpha0();
+		psi0 = get_psi0();
+cout << alpha0 << "   " << tauf << "   " << psi0 << "   " << Tf << "   " << muf << "   " << sf << endl;
+		for (int iDy = 0; iDy < 1; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
 			//option #1
@@ -203,38 +197,53 @@ int main(int argc, char *argv[])
 			//option #2
 			//double y1 = 0.5*Delta_y;
 			//double y2 = -0.5*Delta_y;
-			//option #3
-			//double y1 = Delta_y;
-			//double y2 = Delta_y;
-//cout << alpha0 << "   " << phi0 << endl;
+
+			//scale out y-dependence, if desired
 			double cy1 = cosh(y1);
 			double cy2 = cosh(y2);
 			double cDy = cosh(y1-y2);
 			double scale_out_y_dep_factor = 1.0;
 			if (scale_out_y_dependence)
 				scale_out_y_dep_factor = cy1*cy1*cy2*cy2 / (cDy*cDy);
+
 			complex<double> sum(0,0);
 			for (int ik = 0; ik < n_k_pts; ++ik)
 			{
 				double k = k_pts[ik];
-				complex<double> gt_r = gt_rho(k);
-				complex<double> gt_o = gt_omega(k);
+
+				complex<double> Fbts = Fbtilde_s(k);
+				complex<double> Fbto = Fbtilde_omega(k);
+				complex<double> Fbtn = Fbtilde_n(k);
+
+				complex<double> Ctss = Ctilde_s_s(k);
+				complex<double> Ctso = Ctilde_s_omega(k);
+				complex<double> Ctsn = Ctilde_s_n(k);
+				complex<double> Ctos = Ctilde_omega_s(k);
+				complex<double> Ctoo = Ctilde_omega_omega(k);
+				complex<double> Cton = Ctilde_omega_n(k);
+				complex<double> Ctns = Ctilde_n_s(k);
+				complex<double> Ctno = Ctilde_n_omega(k);
+				complex<double> Ctnn = Ctilde_n_n(k);
+
 				sum += k_wts[ik] * exp(i * k * Delta_y)
-						* ( gt_r * conj(gt_r) * Ctilde_rho_rho(k)
-							+ gt_r * conj(gt_o) * Ctilde_rho_omega(k)
-							+ gt_o * conj(gt_r) * Ctilde_omega_rho(k)
-							+ gt_o * conj(gt_o) * Ctilde_omega_omega(k) )
-						/ (cy1*cy1*cy2*cy2);
-//cout << k << "   " << gt_r * conj(gt_r) << "   " << gt_r * conj(gt_o) << "   " << gt_o * conj(gt_r) << "   " << gt_o * conj(gt_o) << "   "
-//		<< Ctilde_rho_rho(k) << "   " << Ctilde_rho_omega(k)<< "   " << Ctilde_omega_rho(k) << "   " << Ctilde_omega_omega(k) << endl;
+						* ( Fbts * conj(Fbts) * Ctss
+							+ Fbts * conj(Fbto) * Ctso
+							+ Fbts * conj(Fbtn) * Ctsn
+							+ Fbto * conj(Fbts) * Ctos
+							+ Fbto * conj(Fbto) * Ctoo
+							+ Fbto * conj(Fbtn) * Cton
+							+ Fbtn * conj(Fbts) * Ctns
+							+ Fbtn * conj(Fbto) * Ctno
+							+ Fbtn * conj(Fbtn) * Ctnn );
 			}
 
-			//complex<double> result = sum;
-			double mean_R2l_vs_y = 0.5*tauf*tauf*phi0 / (cDy*cDy);
+			sum *= alpha0*alpha0*pow(tauf, 4.0)*hbarC*hbarC/ (cy1*cy1*cy2*cy2);  //hbarc^2
+
+			double mean_R2l_vs_y = 0.5*tauf*tauf*psi0 / (cDy*cDy);
 			complex<double> result = scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_y);
 			cout << Delta_y << "   " << result.real() << endl;
 		}
-	}*/
+	}
 
 	return 0;
 }

@@ -21,6 +21,8 @@ void inline debugger(int cln, const char* cfn)
 	return;
 }
 
+extern const double hbarC;
+
 extern double vs, Neff, tauf, tau0, Tf, T0, nu, nuVB, ds, A, m;
 extern double mByT, alpha, alpha0, phi0;
 
@@ -251,7 +253,6 @@ inline double sym(double x, double xp)
     return (cosh(xp) * pow(z_x_xp, 5.0) * incompleteGamma5(m/z_x_xp) );
 }
 
-//inline complex<double> scaled_Fbt_rho(double k)
 inline complex<double> gt_rho(double k)
 {
 	complex<double> sum(0,0);
@@ -266,7 +267,6 @@ inline complex<double> gt_rho(double k)
 	return (sum);
 }
 
-//inline complex<double> scaled_Fbt_omega(double k)
 inline complex<double> gt_omega(double k)
 {
 	complex<double> sum(0,0);
