@@ -243,8 +243,8 @@ int main(int argc, char *argv[])
 			double mean_R2l_vs_Dy = 0.5*tauf*tauf*psi0 / (cDy*cDy);
 			double mean_R2l_vs_y1 = 0.5*tauf*tauf*psi0 / (cy1*cy1);
 			double mean_R2l_vs_y2 = 0.5*tauf*tauf*psi0 / (cy2*cy2);
-			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_Dy);
-			complex<double> result2 = (exp(muf/Tf)*ds*tauf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_y1*mean_R2l_vs_y2);
+			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_Dy);
+			complex<double> result2 = (exp(muf/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_y1*mean_R2l_vs_y2);
 			cout << Delta_y << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   " << result.real() << "   " << result2.real() << endl;
 		}
 	}
