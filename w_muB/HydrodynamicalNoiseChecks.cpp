@@ -15,15 +15,15 @@ using namespace std;
 #include "defs.h"
 #include "gauss_quadrature.h"
 
-bool do_1p_calc = false;
+bool do_1p_calc = true;
 bool do_HBT_calc = true;
-bool scale_out_y_dependence = true;
+bool scale_out_y_dependence = false;
 const int particle_to_study = 1;	//1 is pion, 2 is proton
 
 const double hbarC = 197.33;
 const double k_infinity = 10.0;
 const double xi_infinity = 4.0;
-double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, A, m, sf;
+double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf;
 double mByT, alpha0, psi0;
 double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
@@ -49,17 +49,20 @@ double * T_pts_upper, * mu_pts_upper;
 int main(int argc, char *argv[])
 {
 	//set parameters corresponding to all different possible trajectories
+	//Ti = 250.0;		//initial trajectory temperature
 	Ti = 250.0 / hbarC;		//initial trajectory temperature
 	double muis[3] = {420.0, 620.0, 820.0};
 
 	int chosen_trajectory = atoi(argv[1]);
 	chosen_trajectory--;		//use for array indexing throughout
 
-	mui = muis[chosen_trajectory] / hbarC;
+	mui = muis[chosen_trajectory];
+	mui /= hbarC;
 
 	set_phase_diagram_and_EOS_parameters();
 
 	//other constants
+	//m = (particle_to_study == 1) ? 139.57 : 939.0;
 	m = (particle_to_study == 1) ? 139.57 / hbarC : 939.0 / hbarC;
 	taui = 0.5;		//fm/c
 
@@ -68,20 +71,19 @@ int main(int argc, char *argv[])
 	sPERn = si / ni;
 
 	compute_Tf_and_muf();
-	//if (particle_to_study == 1) muf = 1e-6;
+	//if (particle_to_study == 1) muf = 1e-6 / hbarC;
 
 	sf = s(Tf, muf);
 	tauf = si * taui / sf;
 
 	set_critical_point_parameters();
 
-	if (particle_to_study == 1) muf = 1e-6;
+	if (particle_to_study == 1) muf = 1e-6 / hbarC;
 
     // initialize other parameters
     nu = 1.0 / (3.0 * M_PI);
 	nuVB = nu;
     ds = 2.0;
-    A = 1.0;
 	mByT = m / Tf;
 
 	//set the susceptibilities
@@ -176,18 +178,17 @@ int main(int argc, char *argv[])
 							+ Ftn * conj(Ftn) * Ctnn );
 			}
 
-			//sum *= hbarC*hbarC;  //hbarc^2 / hbarc
-
-			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf /*/ hbarC*/ / (2.0*M_PI*M_PI * norm)) * sum;	//this is the one I find
+			//complex<double> result = (exp(muf/Tf)*ds*tauf*Tf / hbarC / (2.0*M_PI*M_PI * norm)) * sum;
+			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf / (2.0*M_PI*M_PI * norm)) * sum;
 			cout << Delta_y << "   " << result.real() << endl;
 		}
 	}
 
 	if (do_HBT_calc)
 	{
+		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
 		alpha0 = get_alpha0();
 		psi0 = get_psi0();
-cout << alpha0 << "   " << tauf << "   " << psi0 << "   " << Tf << "   " << muf << "   " << sf << endl;
 		for (int iDy = 0; iDy < 1; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
@@ -237,11 +238,14 @@ cout << alpha0 << "   " << tauf << "   " << psi0 << "   " << Tf << "   " << muf 
 							+ Fbtn * conj(Fbtn) * Ctnn );
 			}
 
-			sum *= alpha0*alpha0*pow(tauf, 4.0)*hbarC*hbarC/ (cy1*cy1*cy2*cy2);  //hbarc^2
+			sum *= pow(tauf, 4.0)/ (cy1*cy1*cy2*cy2);
 
-			double mean_R2l_vs_y = 0.5*tauf*tauf*psi0 / (cDy*cDy);
-			complex<double> result = scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_y);
-			cout << Delta_y << "   " << result.real() << endl;
+			double mean_R2l_vs_Dy = 0.5*tauf*tauf*psi0 / (cDy*cDy);
+			double mean_R2l_vs_y1 = 0.5*tauf*tauf*psi0 / (cy1*cy1);
+			double mean_R2l_vs_y2 = 0.5*tauf*tauf*psi0 / (cy2*cy2);
+			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_Dy);
+			complex<double> result2 = (exp(muf/Tf)*ds*tauf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_y1*mean_R2l_vs_y2);
+			cout << Delta_y << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   " << result.real() << "   " << result2.real() << endl;
 		}
 	}
 

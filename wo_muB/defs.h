@@ -23,7 +23,7 @@ void inline debugger(int cln, const char* cfn)
 
 extern const double hbarC;
 
-extern double vs, Neff, tauf, tau0, Tf, T0, nu, nuVB, ds, A, m;
+extern double vs, Neff, tauf, tau0, Tf, T0, nu, nuVB, ds, m;
 extern double mByT, alpha, alpha0, phi0;
 
 extern const int n_xi_pts;
@@ -41,6 +41,7 @@ inline double Temperature(double tau)
 
 inline double dTemperaturedtau(double tau)
 {
+	//return (- T0 * vs * vs * pow(tau0 / tau, vs*vs) / tau / hbarC);
 	return (- T0 * vs * vs * pow(tau0 / tau, vs*vs) / tau);
 }
 
@@ -111,8 +112,12 @@ inline complex<double> Ftilde_omega(double k)
 inline complex<double> Gtilde_rho(double k, double t, double t_p)
 {
 	double t_by_tp = t / t_p;
-	double t_x_T_at_t = t * Temperature(t);
-	double tp_x_T_at_tp = t_p * Temperature(t_p);
+	//double T_at_t = Temperature(t) / hbarC;
+	double T_at_t = Temperature(t);
+	double t_x_T_at_t = t * T_at_t;
+	//double T_at_tp = Temperature(t_p) / hbarC;
+	double T_at_tp = Temperature(t_p);
+	double tp_x_T_at_tp = t_p * T_at_tp;
 	double log_tBYtp = log(t_by_tp);
 	double prefactor = pow(t_by_tp, -alpha);
 	complex<double> b = beta(k);
@@ -125,8 +130,10 @@ inline complex<double> Gtilde_rho(double k, double t, double t_p)
 inline complex<double> Gtilde_omega(double k, double t, double t_p)
 {
 	double t_by_tp = t / t_p;
+	//double T_at_t = Temperature(t) / hbarC;
 	double T_at_t = Temperature(t);
 	double t_x_T_at_t = t * T_at_t;
+	//double T_at_tp = Temperature(t_p) / hbarC;
 	double T_at_tp = Temperature(t_p);
 	double tp_x_T_at_tp = t_p * T_at_tp;
 	double log_tBYtp = log(t_by_tp);
@@ -150,7 +157,8 @@ inline complex<double> Gtilde_omega(double k, double t, double t_p)
 
 inline complex<double> Ctilde_rho_rho(double k)
 {
-	double pref = 2.0 * nu / A;
+	//double pref = 2.0 * nu * pow(hbarC, 4.0);
+	double pref = 2.0 * nu;
     complex<double> sum = 0.0;
     for (int it = 0; it < n_tau_pts; it++)
 	{
@@ -164,7 +172,8 @@ inline complex<double> Ctilde_rho_rho(double k)
 
 inline complex<double> Ctilde_rho_omega(double k)
 {
-	double pref = 2.0 * nu / A;
+	//double pref = 2.0 * nu * pow(hbarC, 4.0);
+	double pref = 2.0 * nu;
     complex<double> sum = 0.0;
     for (int it = 0; it < n_tau_pts; it++)
 	{
@@ -179,7 +188,8 @@ inline complex<double> Ctilde_rho_omega(double k)
 
 inline complex<double> Ctilde_omega_rho(double k)
 {
-	double pref = 2.0 * nu / A;
+	//double pref = 2.0 * nu * pow(hbarC, 4.0);
+	double pref = 2.0 * nu;
     complex<double> sum = 0.0;
     for (int it = 0; it < n_tau_pts; it++)
 	{
@@ -194,7 +204,8 @@ inline complex<double> Ctilde_omega_rho(double k)
 
 inline complex<double> Ctilde_omega_omega(double k)
 {
-	double pref = 2.0 * nu / A;
+	//double pref = 2.0 * nu * pow(hbarC, 4.0);
+	double pref = 2.0 * nu;
     complex<double> sum = 0.0;
     for (int it = 0; it < n_tau_pts; it++)
 	{

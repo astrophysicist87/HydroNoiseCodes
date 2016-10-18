@@ -13,13 +13,13 @@ using namespace std;
 #include "defs.h"
 #include "gauss_quadrature.h"
 
-bool do_1p_calc = false;
+bool do_1p_calc = true;
 bool do_HBT_calc = true;
 bool scale_out_y_dependence = true;
 
 const double hbarC = 197.33;
 const double infinity = 15.0;
-double vs, Neff, tauf, tau0, Tf, T0, nu, nuVB, ds, A, m;
+double vs, Neff, tauf, tau0, Tf, T0, nu, nuVB, ds, m;
 double mByT, alpha, alpha0, phi0;
 
 const int n_xi_pts = 200;
@@ -37,19 +37,24 @@ int main()
     Neff = 47.5;
     tauf = 10.0;
     Tf = 150.0 / hbarC;
+    //Tf = 150.0;
     T0 = 600.0 / hbarC;
+    //T0 = 600.0;
     nu = 1.0 / (3.0 * M_PI);
 	nuVB = nu;
+	//nuVB = 0.0;
     ds = 2.0;
-    A = 1.0;
     m = 139.57 / hbarC;
+    //m = 139.57;
     tau0 = invTemperature(Tf);
 	mByT = m / Tf;
 
 	double inv_vs2 = 1.0 / (vs*vs);
 
-	double kappa = ds*A*tauf*Tf*Tf*Tf / (4.0*M_PI*M_PI);
-	double kappap = ( (45.0 * ds * nu) / (4.0 * pow(M_PI, 4.0)*Neff*Tf*tauf) ) * pow( T0/Tf, 2.0*(inv_vs2 - 2.0) );
+	//double kappa = ds*tauf*Tf*Tf*Tf / (4.0*M_PI*M_PI*hbarC*hbarC*hbarC);	//fm^{-2}
+	//double kappap = ( (45.0 * ds * nu*hbarC) / (4.0 * pow(M_PI, 4.0)*Neff*Tf*tauf) ) * pow( T0/Tf, 2.0*(inv_vs2 - 2.0) );	//dimensionless
+	double kappa = ds*tauf*Tf*Tf*Tf / (4.0*M_PI*M_PI);	//fm^{-2}
+	double kappap = ( (45.0 * ds * nu) / (4.0 * pow(M_PI, 4.0)*Neff*Tf*tauf) ) * pow( T0/Tf, 2.0*(inv_vs2 - 2.0) );	//dimensionless
 
     // set up grid points for integrations
     xi_pts_0_inf = new double [n_xi_pts];
@@ -69,7 +74,7 @@ int main()
 	if (do_1p_calc)
 	{
 		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
-		for (int iDy = 0; iDy < 61; iDy++)
+		for (int iDy = 0; iDy < 1; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
 			complex<double> sum(0,0);
@@ -86,7 +91,7 @@ int main()
 			}
 
 			complex<double> result = (kappa / (2.0 *M_PI * kappap * norm)) * sum;
-			//cout << Delta_y << "   " << result.real() << endl;
+			cout << Delta_y << "   " << result.real() << endl;
 		}
 	}
 
@@ -94,6 +99,7 @@ int main()
 	{
 		alpha0 = 1.0 / integrate_2D(alpha0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
 		phi0 = integrate_2D(phi0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
+		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
 		for (int iDy = 0; iDy < 1; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
@@ -131,7 +137,7 @@ int main()
 
 			//complex<double> result = sum;
 			double mean_R2l_vs_y = 0.5*tauf*tauf*phi0 / (cDy*cDy);
-			complex<double> result = scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_y);
+			complex<double> result = kappa*norm*scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_y);
 			cout << Delta_y /*<< "   " << sum.real() << "   " << mean_R2l_vs_y*/ << "   " << result.real() << endl;
 		}
 	}

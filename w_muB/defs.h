@@ -28,7 +28,7 @@ extern const double hbarC;
 
 int integration_mode = 2;
 
-extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, A, m, sf;
+extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf;
 extern double mByT, alpha0, psi0;
 extern double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
@@ -39,11 +39,9 @@ extern double * xi_pts_minf_inf, * xi_wts_minf_inf;
 extern double * k_pts, * k_wts;
 extern double * tau_pts, * tau_wts;
 extern double * tau_pts_lower, * tau_wts_lower;
-//extern double * tau_pts_middle, * tau_wts_middle;
 extern double * tau_pts_upper, * tau_wts_upper;
 extern double * T_pts, * mu_pts;
 extern double * T_pts_lower, * mu_pts_lower;
-//extern double * T_pts_middle, * mu_pts_middle;
 extern double * T_pts_upper, * mu_pts_upper;
 
 extern double exp_delta, exp_gamma, exp_nu;
@@ -85,6 +83,8 @@ inline double P(double T, double mu)
 inline void set_phase_diagram_and_EOS_parameters()
 {
 	Nf = 2.0;											//number of massless flavors
+	//T0 = 170.0;											//phase transition curve, T scale
+	//mu0 = 1218.48;										//phase transition curve, mu scale
 	T0 = 170.0 / hbarC;											//phase transition curve, T scale
 	mu0 = 1218.48 / hbarC;										//phase transition curve, mu scale
 	A4 = M_PI*M_PI*(16.0 + 10.5*Nf) / 90.0;				//coeff in P(T,mu) (i.e., EOS)
@@ -157,6 +157,8 @@ inline double w(double T, double mu)
 inline void set_critical_point_parameters()
 {
 	//set critical point quantities
+	//Tc = 160.0;
+	//muc = 411.74;
 	Tc = 160.0 / hbarC;
 	muc = 411.74 / hbarC;
 	Pc = P(Tc, muc);
@@ -220,7 +222,8 @@ inline double Delta_DT(double T, double mu)
 {
 	double xi_loc = xi(T, mu);
 	return (
-		/*hbarC * */RD * T * Omega(qD * xi_loc) / (6.0 * M_PI * etaBYs * s(T, mu) * xi_loc)	//MeV^{-1}
+		//hbarC * RD * T * Omega(qD * xi_loc) / (6.0 * M_PI * etaBYs * s(T, mu) * xi_loc)	//MeV^{-1}
+		RD * T * Omega(qD * xi_loc) / (6.0 * M_PI * etaBYs * s(T, mu) * xi_loc)
 	);
 }
 
@@ -305,6 +308,7 @@ inline double Fs(double x)
 	double c1 = sf * chi_tilde_mu_mu;
 	double c2 = -sf * (chi_tilde_T_mu + chi_tilde_mu_mu * muf / Tf);
 
+	//return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (hbarC*cx*cx) );
 	return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (cx*cx) );
 }
 
@@ -312,6 +316,7 @@ inline double Fomega(double x)
 {
 	double cx = cosh(x);
 	
+	//return (Tf * tanh(x)*incompleteGamma4(mByT * cx) / (hbarC*cx*cx));
 	return (Tf * tanh(x)*incompleteGamma4(mByT * cx) / (cx*cx));
 }
 
@@ -322,6 +327,7 @@ inline double Fn(double x)
 	double c1 = -sf * chi_tilde_T_mu;
 	double c2 = sf * (chi_tilde_T_T + chi_tilde_T_mu * muf / Tf);
 
+	//return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (hbarC*cx*cx) );
 	return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (cx*cx) );
 }
 
@@ -340,10 +346,8 @@ inline complex<double> Ftilde_n(double k)
 	return (integrate_1D_FT(Fn, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts, k));
 }
 
-//inline complex<double> Gtilde_s(double k, int i_t_p, double * tau_list)
 inline complex<double> Gtilde_s(double k, double t_p)
 {
-	//double t_p = tau_list[i_t_p];
 	double T_loc = Tf;		//second argument always evaluated at t = tau_f
 	double mu_loc = muf;	//second argument always evaluated at t = tau_f
 	complex<double> b = beta(k);
@@ -353,28 +357,24 @@ inline complex<double> Gtilde_s(double k, double t_p)
 	complex<double> f1 = (a_at_tauf/b)*sinh(b*log(t_by_tp)) + cosh(b*log(t_by_tp));
 
 	return (
-		(-i * k *mu_loc / (T_loc * vsigma2_at_tauf) ) * (f0 + pref*f1)
+		(-i * k *mu_loc / (T_loc * vsigma2_at_tauf) ) * (f0 + pref*f1)	//dimensionless
 	);
 }
 
-//inline complex<double> Gtilde_omega(double k, int i_t_p, double * tau_list)
 inline complex<double> Gtilde_omega(double k, double t_p)
 {
-	//double t_p = tau_list[i_t_p];
 	double T_loc = Tf;		//second argument always evaluated at t = tau_f
 	double mu_loc = muf;	//second argument always evaluated at t = tau_f
 	double t_by_tp = tauf / t_p;
 	complex<double> b = beta(k);
 	
 	return (
-		(k*k*sPERn/b) * ( vsigma2_at_tauf-vn2_at_tauf ) * pow(t_by_tp, -a_at_tauf) * sinh(b*log(t_by_tp))
+		(k*k*sPERn/b) * ( vsigma2_at_tauf-vn2_at_tauf ) * pow(t_by_tp, -a_at_tauf) * sinh(b*log(t_by_tp))	//dimensionless
 	);
 }
 
-//inline complex<double> Gtilde_n(double k, int i_t_p, double * tau_list)
 inline complex<double> Gtilde_n(double k, double t_p)
 {
-	//double t_p = tau_list[i_t_p];
 	double T_loc = Tf;		//second argument always evaluated at t = tau_f
 	double mu_loc = muf;	//second argument always evaluated at t = tau_f
 	complex<double> b = beta(k);
@@ -384,7 +384,7 @@ inline complex<double> Gtilde_n(double k, double t_p)
 	complex<double> f1 = (a_at_tauf/b)*sinh(b*log(t_by_tp)) + cosh(b*log(t_by_tp));
 
 	return (
-		(i * k / vsigma2_at_tauf ) * (f0 + pref*f1)
+		(i * k / vsigma2_at_tauf ) * (f0 + pref*f1)			//dimensionless
 	);
 }
 
@@ -401,7 +401,8 @@ inline complex<double> Ctilde_s_s(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );		//MeV^{-3}
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_s(k, t_loc) * Gtilde_s(-k, t_loc);
 	}
 		//upper section
@@ -410,7 +411,8 @@ inline complex<double> Ctilde_s_s(double k)
 			double t_loc = tau_pts_upper[it];
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_s(k, t_loc) * Gtilde_s(-k, t_loc);
 		}
 	}
@@ -422,12 +424,14 @@ inline complex<double> Ctilde_s_s(double k)
 			double t_loc = tau_pts[it];
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_s(k, t_loc) * Gtilde_s(-k, t_loc);
 		}
 	}
 
-	return ( sum/A );
+	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_s_omega(double k)
@@ -441,7 +445,8 @@ inline complex<double> Ctilde_s_omega(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_s(k, t_loc) * Gtilde_omega(-k, t_loc);
 	}
 		//upper section
@@ -450,7 +455,8 @@ inline complex<double> Ctilde_s_omega(double k)
 			double t_loc = tau_pts_upper[it];
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_s(k, t_loc) * Gtilde_omega(-k, t_loc);
 		}
 	}
@@ -461,12 +467,14 @@ inline complex<double> Ctilde_s_omega(double k)
 			double t_loc = tau_pts[it];
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_s(k, t_loc) * Gtilde_omega(-k, t_loc);
 		}
 	}
 
-	return ( sum/A );
+	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_s_n(double k)
@@ -480,7 +488,8 @@ inline complex<double> Ctilde_s_n(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_s(k, t_loc) * Gtilde_n(-k, t_loc);
 	}
 		//upper section
@@ -489,7 +498,8 @@ inline complex<double> Ctilde_s_n(double k)
 			double t_loc = tau_pts_upper[it];
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_s(k, t_loc) * Gtilde_n(-k, t_loc);
 		}
 	}
@@ -500,12 +510,14 @@ inline complex<double> Ctilde_s_n(double k)
 			double t_loc = tau_pts[it];
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_s(k, t_loc) * Gtilde_n(-k, t_loc);
 		}
 	}
 
-	return ( sum/A );
+	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_omega_s(double k)
@@ -519,7 +531,8 @@ inline complex<double> Ctilde_omega_s(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_omega(k, t_loc) * Gtilde_s(-k, t_loc);
 	}
 		//upper section
@@ -528,7 +541,8 @@ inline complex<double> Ctilde_omega_s(double k)
 			double t_loc = tau_pts_upper[it];
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_omega(k, t_loc) * Gtilde_s(-k, t_loc);
 		}
 	}
@@ -539,12 +553,14 @@ inline complex<double> Ctilde_omega_s(double k)
 			double t_loc = tau_pts[it];
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_omega(k, t_loc) * Gtilde_s(-k, t_loc);
 		}
 	}
 
-	return ( sum/A );
+	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_omega_omega(double k)
@@ -558,7 +574,8 @@ inline complex<double> Ctilde_omega_omega(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_omega(k, t_loc) * Gtilde_omega(-k, t_loc);
 	}
 		//upper section
@@ -567,7 +584,8 @@ inline complex<double> Ctilde_omega_omega(double k)
 			double t_loc = tau_pts_upper[it];
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_omega(k, t_loc) * Gtilde_omega(-k, t_loc);
 		}
 	}
@@ -578,12 +596,14 @@ inline complex<double> Ctilde_omega_omega(double k)
 			double t_loc = tau_pts[it];
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_omega(k, t_loc) * Gtilde_omega(-k, t_loc);
 		}
 	}
 
-	return ( sum/A );
+	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_omega_n(double k)
@@ -597,7 +617,8 @@ inline complex<double> Ctilde_omega_n(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_omega(k, t_loc) * Gtilde_n(-k, t_loc);
 	}
 		//upper section
@@ -606,7 +627,8 @@ inline complex<double> Ctilde_omega_n(double k)
 			double t_loc = tau_pts_upper[it];
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_omega(k, t_loc) * Gtilde_n(-k, t_loc);
 		}
 	}
@@ -617,12 +639,14 @@ inline complex<double> Ctilde_omega_n(double k)
 			double t_loc = tau_pts[it];
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_omega(k, t_loc) * Gtilde_n(-k, t_loc);
 		}
 	}
 
-	return ( sum/A );
+	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_n_s(double k)
@@ -636,7 +660,8 @@ inline complex<double> Ctilde_n_s(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_s(-k, t_loc);
 	}
 		//upper section
@@ -645,7 +670,8 @@ inline complex<double> Ctilde_n_s(double k)
 			double t_loc = tau_pts_upper[it];
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_s(-k, t_loc);
 		}
 	}
@@ -656,12 +682,14 @@ inline complex<double> Ctilde_n_s(double k)
 			double t_loc = tau_pts[it];
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_s(-k, t_loc);
 		}
 	}
 
-	return ( sum/A );
+	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_n_omega(double k)
@@ -675,7 +703,8 @@ inline complex<double> Ctilde_n_omega(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_omega(-k, t_loc);
 	}
 		//upper section
@@ -684,7 +713,8 @@ inline complex<double> Ctilde_n_omega(double k)
 			double t_loc = tau_pts_upper[it];
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_omega(-k, t_loc);
 		}
 	}
@@ -695,12 +725,14 @@ inline complex<double> Ctilde_n_omega(double k)
 			double t_loc = tau_pts[it];
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_omega(-k, t_loc);
 		}
 	}
 
-	return ( sum/A );
+	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_n_n(double k)
@@ -714,7 +746,8 @@ inline complex<double> Ctilde_n_n(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc);
 	}
 		//upper section
@@ -723,7 +756,8 @@ inline complex<double> Ctilde_n_n(double k)
 			double t_loc = tau_pts_upper[it];
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc);
 		}
 	}
@@ -734,12 +768,14 @@ inline complex<double> Ctilde_n_n(double k)
 			double t_loc = tau_pts[it];
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) ), 2.0)
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc);
 		}
 	}
 
-	return ( sum/A );
+	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return ( sum );	//fm^2
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -816,13 +852,6 @@ inline double get_psi0()
 	return (alpha0 * sum);													//MeV^0
 }
 
-/*inline double g(double y, double yp)
-{
-	double cy = cosh(y);
-	double cyp = cosh(yp);
-	return (alpha0*alpha0*pow(tauf, 4.0)/(cy*cy*cyp*cyp));
-}*/
-
 inline complex<double> Fbtilde_s(double k)
 {
 	complex<double> sum(0,0);
@@ -835,7 +864,7 @@ inline complex<double> Fbtilde_s(double k)
 				* cosh(xi1) * cosh(xi2) * f2(xi1, xi2) * (gamma(xi1, xi2) - psi0);	//MeV^4
 	}
 
-	return (sum);																	//MeV^4
+	return (alpha0*sum);															//MeV^0
 }
 
 inline complex<double> Fbtilde_omega(double k)
@@ -850,7 +879,7 @@ inline complex<double> Fbtilde_omega(double k)
 				* cosh(xi1) * cosh(xi2) * f3(xi1, xi2) * (gamma(xi1, xi2) - psi0);	//MeV^4
 	}
 
-	return (sum);																	//MeV^4
+	return (alpha0*sum);															//MeV^0
 }
 
 inline complex<double> Fbtilde_n(double k)
@@ -865,7 +894,7 @@ inline complex<double> Fbtilde_n(double k)
 				* cosh(xi1) * cosh(xi2) * f4(xi1, xi2) * (gamma(xi1, xi2) - psi0);	//MeV^4
 	}
 
-	return (sum);																	//MeV^4
+	return (alpha0*sum);															//MeV^0
 }
 
 ////////////////////////////////////////////////////////////////////////////////
