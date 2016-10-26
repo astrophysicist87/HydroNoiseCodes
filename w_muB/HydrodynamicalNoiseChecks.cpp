@@ -15,8 +15,10 @@ using namespace std;
 #include "defs.h"
 #include "gauss_quadrature.h"
 
-bool do_1p_calc = true;
-bool do_HBT_calc = true;
+//bool do_1p_calc = true;
+//bool do_HBT_calc = true;
+bool do_1p_calc;
+bool do_HBT_calc;
 bool scale_out_y_dependence = false;
 const int particle_to_study = 1;	//1 is pion, 2 is proton
 
@@ -32,8 +34,13 @@ double T0, mu0, Tc, Pc, nc, sc, wc, muc;
 double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD, si, ni;
 double a_at_tauf, vs2_at_tauf, vn2_at_tauf, vsigma2_at_tauf;
 
-const int n_xi_pts = 200;
-const int n_k_pts = 200;
+double screw_it_up_factor, current_kwt, current_DY;
+int current_itau;
+const double mu_pion = 1.e-3 / hbarC;
+double mu_proton, mu_part;
+
+const int n_xi_pts = 100;
+const int n_k_pts = 100;
 const int n_tau_pts = 200;
 double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
@@ -52,9 +59,16 @@ int main(int argc, char *argv[])
 	//Ti = 250.0;		//initial trajectory temperature
 	Ti = 250.0 / hbarC;		//initial trajectory temperature
 	double muis[3] = {420.0, 620.0, 820.0};
+	double screw_it_up_factors[3] = {0.0, 0.0, 0.0};
+	current_itau = 0;
 
 	int chosen_trajectory = atoi(argv[1]);
 	chosen_trajectory--;		//use for array indexing throughout
+	do_1p_calc = (bool)atoi(argv[2]);
+	do_HBT_calc = (bool)atoi(argv[3]);
+
+	//use this to see why all three trajectories zero at roughly same Delta_y point
+	screw_it_up_factor = screw_it_up_factors[chosen_trajectory];
 
 	mui = muis[chosen_trajectory];
 	mui /= hbarC;
@@ -71,14 +85,15 @@ int main(int argc, char *argv[])
 	sPERn = si / ni;
 
 	compute_Tf_and_muf();
-	//if (particle_to_study == 1) muf = 1e-6 / hbarC;
 
 	sf = s(Tf, muf);
 	tauf = si * taui / sf;
 
 	set_critical_point_parameters();
 
-	if (particle_to_study == 1) muf = 1e-6 / hbarC;
+	mu_proton = muf;
+	mu_part = (particle_to_study == 1) ? mu_pion : mu_proton;
+	//mu_part = muf;
 
     // initialize other parameters
     nu = 1.0 / (3.0 * M_PI);
@@ -117,6 +132,9 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_k_pts, 1, 0.0, 0.0, -k_infinity, k_infinity, k_pts, k_wts);
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, taui, tauf, tau_pts, tau_wts);
 
+//cout << setprecision(15) << taui << "   " << tauf << endl;
+
+
 	T_pts_lower = new double [n_tau_pts];
 	T_pts_upper = new double [n_tau_pts];
 	T_pts = new double [n_tau_pts];
@@ -134,11 +152,16 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, tauc, tauf, tau_pts_upper, tau_wts_upper);
 	populate_T_and_mu_vs_tau_part2();
 
+	//for (int it  = 0; it < n_tau_pts; it++)
+	//	cout << setprecision(15) << it << "   " << tau_pts[it]*1000.0/hbarC << "   " << T_pts[it]*hbarC / 1000.0 << "   " << mu_pts[it]*hbarC / 1000.0 << endl;
+
 	//if (1) return (0);
 
-	/*for (int ix = 0; ix < 200; ix++)
+	/*cout << hbarC*Tf << "   " << hbarC*muf << "   " << hbarC*hbarC*hbarC*sf << "   " << chi_tilde_mu_mu/(hbarC*hbarC) << "   " << chi_tilde_T_mu/(hbarC*hbarC) << "   " << chi_tilde_T_T/(hbarC*hbarC) << endl << endl;
+
+	for (int ix = 0; ix < 21; ix++)
 	{
-		double x = -10.0 + (double)ix * 0.1;
+		double x = -1.0 + (double)ix * 0.1;
 		cout << x << "   " << Fs(x) << "   " << Fomega(x) << "   " << Fn(x) << endl;
 	}
 	if (1) return (0);*/
@@ -149,11 +172,14 @@ int main(int argc, char *argv[])
 		//cout << "norm = " << setprecision(15) << norm << endl;
 		for (int iDy = 0; iDy < 1; iDy++)
 		{
-			double Delta_y = (double)iDy * 0.1;
+			double Delta_y = (double)iDy * 0.01;
+			current_DY = Delta_y;
 			complex<double> sum(0,0);
+			complex<double> sum00(0,0), sum01(0,0), sum02(0,0), sum10(0,0), sum11(0,0), sum12(0,0), sum20(0,0), sum21(0,0), sum22(0,0);
 			for (int ik = 0; ik < n_k_pts; ++ik)
 			{
 				double k = k_pts[ik];
+				current_kwt = k_wts[ik];
 				complex<double> Fts = Ftilde_s(k);
 				complex<double> Fto = Ftilde_omega(k);
 				complex<double> Ftn = Ftilde_n(k);
@@ -176,11 +202,35 @@ int main(int argc, char *argv[])
 							+ Ftn * conj(Fts) * Ctns
 							+ Ftn * conj(Fto) * Ctno
 							+ Ftn * conj(Ftn) * Ctnn );
+				sum00 += k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fts) * Ctss;
+				sum01 += k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fto) * Ctso;
+				sum02 += k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Ftn) * Ctsn;
+				sum10 += k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fts) * Ctos;
+				sum11 += k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fto) * Ctoo;
+				sum12 += k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Ftn) * Cton;
+				sum20 += k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fts) * Ctns;
+				sum21 += k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fto) * Ctno;
+				sum22 += k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Ftn) * Ctnn;
+			//cout << "DETAILS: " << setprecision(10) << Delta_y << "   " << k << "   " << k_wts[ik] << "   " << Ftn.real() << "   " << Ctnn.real() << "   " << (Ftn * conj(Ftn) * Ctnn).real() << endl;
+				/*<< (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fts) * Ctss).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fts) * Ctss).imag() << "   "
+				<< (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fto) * Ctso).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fto) * Ctso).imag() << "   "
+				<< (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Ftn) * Ctsn).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Ftn) * Ctsn).imag() << "   "
+				<< (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fts) * Ctos).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fts) * Ctos).imag() << "   "
+				<< (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fto) * Ctoo).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fto) * Ctoo).imag() << "   "
+				<< (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Ftn) * Cton).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Ftn) * Cton).imag() << "   "
+				<< (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fts) * Ctns).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fts) * Ctns).imag() << "   "
+				<< (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fto) * Ctno).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fto) * Ctno).imag() << "   "*/
+				//<< Ftn.real() << "   " << Ftn.imag() << "   " << Ctnn.real() << "   " << Ctnn.imag() << "   " << exp(i * k * Delta_y).real() << "   " << exp(i * k * Delta_y).imag() << "   " 
+				//<< (k_wts[ik] * Ftn * conj(Ftn) * Ctnn).real() << "   " << (k_wts[ik] * Ftn * conj(Ftn) * Ctnn).imag() << "   "
+				//<< (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Ftn) * Ctnn).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Ftn) * Ctnn).imag() << endl;
 			}
 
 			//complex<double> result = (exp(muf/Tf)*ds*tauf*Tf / hbarC / (2.0*M_PI*M_PI * norm)) * sum;
-			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf / (2.0*M_PI*M_PI * norm)) * sum;
-			cout << Delta_y << "   " << result.real() << endl;
+			complex<double> result = (exp(mu_part/Tf)*ds*tauf*Tf / (2.0*M_PI*M_PI * norm)) * sum;
+			//cerr << "SUMMARY: " << Delta_y << "   " << sum00.real() << "   " << sum01.real() << "   " << sum02.real() << "   "
+			//		<< sum10.real() << "   " << sum11.real() << "   " << sum12.real() << "   " << sum20.real() << "   "
+			//		<< sum21.real() << "   " << sum22.real() << "   " << sum.real() << "   " << result.real() << endl;
+			cout << setprecision(15) << Delta_y << "   " << result.real() << endl;
 		}
 	}
 
@@ -189,7 +239,7 @@ int main(int argc, char *argv[])
 		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
 		alpha0 = get_alpha0();
 		psi0 = get_psi0();
-		for (int iDy = 0; iDy < 1; iDy++)
+		for (int iDy = 0; iDy < 61; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
 			//option #1

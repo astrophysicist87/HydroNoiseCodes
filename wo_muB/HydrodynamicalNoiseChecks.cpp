@@ -136,9 +136,12 @@ int main()
 			}
 
 			//complex<double> result = sum;
-			double mean_R2l_vs_y = 0.5*tauf*tauf*phi0 / (cDy*cDy);
-			complex<double> result = kappa*norm*scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_y);
-			cout << Delta_y /*<< "   " << sum.real() << "   " << mean_R2l_vs_y*/ << "   " << result.real() << endl;
+			double mean_R2l_vs_Dy = 0.5*tauf*tauf*phi0 / (cDy*cDy);
+			double mean_R2l_vs_y1 = 0.5*tauf*tauf*phi0 / (cy1*cy1);
+			double mean_R2l_vs_y2 = 0.5*tauf*tauf*phi0 / (cy2*cy2);
+			complex<double> result = (ds*tauf*Tf*Tf*Tf / (4.0*M_PI*M_PI))*norm*scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_Dy);
+			complex<double> result2 = (ds*tauf*Tf*Tf*Tf / (4.0*M_PI*M_PI))*norm*scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_y1*mean_R2l_vs_y2);
+			cout << Delta_y << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   " << result.real() << "   " << result2.real() << endl;
 		}
 	}
 
