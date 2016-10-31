@@ -39,8 +39,8 @@ int current_itau;
 const double mu_pion = 1.e-3 / hbarC;
 double mu_proton, mu_part;
 
-const int n_xi_pts = 100;
-const int n_k_pts = 100;
+const int n_xi_pts = 200;
+const int n_k_pts = 200;
 const int n_tau_pts = 200;
 double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
@@ -170,9 +170,9 @@ int main(int argc, char *argv[])
 	{
 		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
 		//cout << "norm = " << setprecision(15) << norm << endl;
-		for (int iDy = 0; iDy < 1; iDy++)
+		for (int iDy = 0; iDy < 51; iDy++)
 		{
-			double Delta_y = (double)iDy * 0.01;
+			double Delta_y = (double)iDy * 0.1;
 			current_DY = Delta_y;
 			complex<double> sum(0,0);
 			complex<double> sum00(0,0), sum01(0,0), sum02(0,0), sum10(0,0), sum11(0,0), sum12(0,0), sum20(0,0), sum21(0,0), sum22(0,0);
@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
 		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
 		alpha0 = get_alpha0();
 		psi0 = get_psi0();
-		for (int iDy = 0; iDy < 61; iDy++)
+		for (int iDy = 0; iDy < 1; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
 			//option #1
@@ -290,12 +290,14 @@ int main(int argc, char *argv[])
 
 			sum *= pow(tauf, 4.0)/ (cy1*cy1*cy2*cy2);
 
+			double A = 1.0; //fm^2
+			double dNdy = exp(mu_part/Tf)*ds*tauf*A*Tf*Tf*Tf*norm / (4.0*M_PI*M_PI);
 			double mean_R2l_vs_Dy = 0.5*tauf*tauf*psi0 / (cDy*cDy);
 			double mean_R2l_vs_y1 = 0.5*tauf*tauf*psi0 / (cy1*cy1);
 			double mean_R2l_vs_y2 = 0.5*tauf*tauf*psi0 / (cy2*cy2);
-			complex<double> result = (exp(muf/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_Dy);
-			complex<double> result2 = (exp(muf/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_y1*mean_R2l_vs_y2);
-			cout << Delta_y << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   " << result.real() << "   " << result2.real() << endl;
+			complex<double> result = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_Dy);
+			complex<double> result2 = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_y1*mean_R2l_vs_y2);
+			cout << Delta_y << "   " << dNdy << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   " << result.real() << "   " << result2.real() << endl;
 		}
 	}
 

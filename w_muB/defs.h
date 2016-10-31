@@ -788,10 +788,10 @@ inline complex<double> Ctilde_n_n(double k)
 			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
 			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
 					* Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc);
-			/*cout << "DETAILS: " << setprecision(10) << k << "   " << t_loc << "   "
-					<< vsigma2(T_loc, mu_loc) << "   " << vn2(T_loc, mu_loc) << "   "
+			cerr << "DETAILS: " << setprecision(10) << k << "   " << t_loc << "   "
+					<< local_Ftn.real() << "   " << local_Ftn.imag() << "   "
 					<< Gtilde_n(k, t_loc).real() << "   " << Gtilde_n(k, t_loc).imag() << "   "
-					<< (Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc)).real() << endl;*/
+					<< (Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc)).real() << endl;
 		}
 	}
 
