@@ -170,6 +170,27 @@ int main(int argc, char *argv[])
 	{
 		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
 		//cout << "norm = " << setprecision(15) << norm << endl;
+
+		vector<complex<double> > Fts_vec, Fto_vec, Ftn_vec;
+		vector<complex<double> > Ctss_vec, Ctso_vec, Ctsn_vec, Ctos_vec, Ctoo_vec, Cton_vec, Ctns_vec, Ctno_vec, Ctnn_vec;
+
+		for (int ik = 0; ik < n_k_pts; ++ik)
+		{
+			double k = k_pts[ik];
+			Fts_vec.push_back(Ftilde_s(k));
+			Fto_vec.push_back(Ftilde_omega(k));
+			Ftn_vec.push_back(Ftilde_n(k));
+			Ctss_vec.push_back(Ctilde_s_s(k));
+			Ctso_vec.push_back(Ctilde_s_omega(k));
+			Ctsn_vec.push_back(Ctilde_s_n(k));
+			Ctos_vec.push_back(Ctilde_omega_s(k));
+			Ctoo_vec.push_back(Ctilde_omega_omega(k));
+			Cton_vec.push_back(Ctilde_omega_n(k));
+			Ctns_vec.push_back(Ctilde_n_s(k));
+			Ctno_vec.push_back(Ctilde_n_omega(k));
+			Ctnn_vec.push_back(Ctilde_n_n(k));
+		}
+
 		for (int iDy = 0; iDy < 51; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
@@ -180,7 +201,7 @@ int main(int argc, char *argv[])
 			{
 				double k = k_pts[ik];
 				current_kwt = k_wts[ik];
-				complex<double> Fts = Ftilde_s(k);
+				/*complex<double> Fts = Ftilde_s(k);
 				complex<double> Fto = Ftilde_omega(k);
 				complex<double> Ftn = Ftilde_n(k);
 				complex<double> Ctss = Ctilde_s_s(k);
@@ -191,7 +212,20 @@ int main(int argc, char *argv[])
 				complex<double> Cton = Ctilde_omega_n(k);
 				complex<double> Ctns = Ctilde_n_s(k);
 				complex<double> Ctno = Ctilde_n_omega(k);
-				complex<double> Ctnn = Ctilde_n_n(k);
+				complex<double> Ctnn = Ctilde_n_n(k);*/
+				complex<double> Fts = Fts_vec[ik];
+				complex<double> Fto = Fto_vec[ik];
+				complex<double> Ftn = Ftn_vec[ik];
+				complex<double> Ctss = Ctss_vec[ik];
+				complex<double> Ctso = Ctso_vec[ik];
+				complex<double> Ctsn = Ctsn_vec[ik];
+				complex<double> Ctos = Ctos_vec[ik];
+				complex<double> Ctoo = Ctoo_vec[ik];
+				complex<double> Cton = Cton_vec[ik];
+				complex<double> Ctns = Ctns_vec[ik];
+				complex<double> Ctno = Ctno_vec[ik];
+				complex<double> Ctnn = Ctnn_vec[ik];
+
 				sum += k_wts[ik] * exp(i * k * Delta_y)
 						* ( Fts * conj(Fts) * Ctss
 							+ Fts * conj(Fto) * Ctso
@@ -211,18 +245,6 @@ int main(int argc, char *argv[])
 				sum20 += k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fts) * Ctns;
 				sum21 += k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fto) * Ctno;
 				sum22 += k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Ftn) * Ctnn;
-			//cout << "DETAILS: " << setprecision(10) << Delta_y << "   " << k << "   " << k_wts[ik] << "   " << Ftn.real() << "   " << Ctnn.real() << "   " << (Ftn * conj(Ftn) * Ctnn).real() << endl;
-				/*<< (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fts) * Ctss).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fts) * Ctss).imag() << "   "
-				<< (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fto) * Ctso).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Fto) * Ctso).imag() << "   "
-				<< (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Ftn) * Ctsn).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fts * conj(Ftn) * Ctsn).imag() << "   "
-				<< (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fts) * Ctos).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fts) * Ctos).imag() << "   "
-				<< (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fto) * Ctoo).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Fto) * Ctoo).imag() << "   "
-				<< (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Ftn) * Cton).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Fto * conj(Ftn) * Cton).imag() << "   "
-				<< (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fts) * Ctns).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fts) * Ctns).imag() << "   "
-				<< (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fto) * Ctno).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Fto) * Ctno).imag() << "   "*/
-				//<< Ftn.real() << "   " << Ftn.imag() << "   " << Ctnn.real() << "   " << Ctnn.imag() << "   " << exp(i * k * Delta_y).real() << "   " << exp(i * k * Delta_y).imag() << "   " 
-				//<< (k_wts[ik] * Ftn * conj(Ftn) * Ctnn).real() << "   " << (k_wts[ik] * Ftn * conj(Ftn) * Ctnn).imag() << "   "
-				//<< (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Ftn) * Ctnn).real() << "   " << (k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Ftn) * Ctnn).imag() << endl;
 			}
 
 			//complex<double> result = (exp(muf/Tf)*ds*tauf*Tf / hbarC / (2.0*M_PI*M_PI * norm)) * sum;
