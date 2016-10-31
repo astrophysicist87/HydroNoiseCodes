@@ -261,9 +261,30 @@ int main(int argc, char *argv[])
 		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
 		alpha0 = get_alpha0();
 		psi0 = get_psi0();
-		for (int iDy = 0; iDy < 1; iDy++)
+
+		vector<complex<double> > Fbts_vec, Fbto_vec, Fbtn_vec;
+		vector<complex<double> > Ctss_vec, Ctso_vec, Ctsn_vec, Ctos_vec, Ctoo_vec, Cton_vec, Ctns_vec, Ctno_vec, Ctnn_vec;
+
+		for (int ik = 0; ik < n_k_pts; ++ik)
 		{
-			double Delta_y = (double)iDy * 0.1;
+			double k = k_pts[ik];
+			Fbts_vec.push_back(Fbtilde_s(k));
+			Fbto_vec.push_back(Fbtilde_omega(k));
+			Fbtn_vec.push_back(Fbtilde_n(k));
+			Ctss_vec.push_back(Ctilde_s_s(k));
+			Ctso_vec.push_back(Ctilde_s_omega(k));
+			Ctsn_vec.push_back(Ctilde_s_n(k));
+			Ctos_vec.push_back(Ctilde_omega_s(k));
+			Ctoo_vec.push_back(Ctilde_omega_omega(k));
+			Cton_vec.push_back(Ctilde_omega_n(k));
+			Ctns_vec.push_back(Ctilde_n_s(k));
+			Ctno_vec.push_back(Ctilde_n_omega(k));
+			Ctnn_vec.push_back(Ctilde_n_n(k));
+		}
+
+		for (int iDy = 0; iDy < 501; iDy++)
+		{
+			double Delta_y = (double)iDy * 0.01;
 			//option #1
 			double y1 = Delta_y;
 			double y2 = 0.0;
@@ -284,19 +305,19 @@ int main(int argc, char *argv[])
 			{
 				double k = k_pts[ik];
 
-				complex<double> Fbts = Fbtilde_s(k);
-				complex<double> Fbto = Fbtilde_omega(k);
-				complex<double> Fbtn = Fbtilde_n(k);
+				complex<double> Fbts = Fbts_vec[ik];
+				complex<double> Fbto = Fbto_vec[ik];
+				complex<double> Fbtn = Fbtn_vec[ik];
 
-				complex<double> Ctss = Ctilde_s_s(k);
-				complex<double> Ctso = Ctilde_s_omega(k);
-				complex<double> Ctsn = Ctilde_s_n(k);
-				complex<double> Ctos = Ctilde_omega_s(k);
-				complex<double> Ctoo = Ctilde_omega_omega(k);
-				complex<double> Cton = Ctilde_omega_n(k);
-				complex<double> Ctns = Ctilde_n_s(k);
-				complex<double> Ctno = Ctilde_n_omega(k);
-				complex<double> Ctnn = Ctilde_n_n(k);
+				complex<double> Ctss = Ctss_vec[ik];
+				complex<double> Ctso = Ctso_vec[ik];
+				complex<double> Ctsn = Ctsn_vec[ik];
+				complex<double> Ctos = Ctos_vec[ik];
+				complex<double> Ctoo = Ctoo_vec[ik];
+				complex<double> Cton = Cton_vec[ik];
+				complex<double> Ctns = Ctns_vec[ik];
+				complex<double> Ctno = Ctno_vec[ik];
+				complex<double> Ctnn = Ctnn_vec[ik];
 
 				sum += k_wts[ik] * exp(i * k * Delta_y)
 						* ( Fbts * conj(Fbts) * Ctss
