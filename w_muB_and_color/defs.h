@@ -25,6 +25,7 @@ void inline debugger(int cln, const char* cfn)
 }
 
 extern const double hbarC;
+extern double rc;
 
 extern bool white_noise, maxwell_cattaneo_noise, gurtin_pipkin_noise;
 
@@ -479,9 +480,11 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, doubl
 		for (int itp = 0; itp < 2*n_tau_pts; ++itp)
 		{
 			double tA = all_tau_pts[it];
+			double tB = all_tau_pts[itp];
+			if ( abs(tA-tB) > 0.5*rc*(tA+tB) )
+				continue;
 			double TA = all_T_pts[it];
 			double muA = all_mu_pts[it];
-			double tB = all_tau_pts[itp];
 			double TB = all_T_pts[itp];
 			double muB = all_mu_pts[itp];
 			double tbar = tA;	//generalize later to see how sensitive results are

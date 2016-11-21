@@ -31,7 +31,9 @@ const double hbarC = 197.33;
 const double k_infinity = 10.0;
 const double xi_infinity = 4.0;
 
-const int n_Dy = 1;
+const int n_Dy = 51;
+
+double rc = 0.0;
 
 //need these for colored noise expression
 double CN_tau_D, CN_tau_2, CN_v0;
@@ -50,7 +52,7 @@ double mu_proton, mu_part;
 
 const int n_xi_pts = 100;
 const int n_k_pts = 100;
-const int n_tau_pts = 100;
+const int n_tau_pts = 500;
 double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
@@ -76,12 +78,13 @@ int main(int argc, char *argv[])
 	chosen_trajectory--;		//use for array indexing throughout
 	do_1p_calc = (bool)atoi(argv[2]);
 	do_HBT_calc = (bool)atoi(argv[3]);
+	rc = atof(argv[4]);
 
 	//set the noise mode and related quantities
 	white_noise = bool(noise_mode == 0);
 	maxwell_cattaneo_noise = bool(noise_mode == 1);
 	gurtin_pipkin_noise = bool(noise_mode == 2);
-	CN_tau_D = 0.05;	//fm
+	CN_tau_D = atof(argv[5]);	//fm
 	CN_tau_2 = 0.05;	//fm, not used yet
 	CN_v0 = 0.1;		//dimensionless, not correct value, not used yet
 
@@ -291,7 +294,7 @@ int main(int argc, char *argv[])
 			//cerr << "SUMMARY: " << Delta_y << "   " << sum00.real() << "   " << sum01.real() << "   " << sum02.real() << "   "
 			//		<< sum10.real() << "   " << sum11.real() << "   " << sum12.real() << "   " << sum20.real() << "   "
 			//		<< sum21.real() << "   " << sum22.real() << "   " << sum.real() << "   " << result.real() << endl;
-			cout << setprecision(15) << Delta_y << "   " << result.real() << endl;
+			cout << setprecision(15) << rc << "   " << chosen_trajectory << "   " << CN_tau_D << "   " << Delta_y << "   " << result.real() << endl;
 		}
 	}
 
@@ -383,7 +386,9 @@ int main(int argc, char *argv[])
 			double mean_R2l_vs_y2 = 0.5*tauf*tauf*psi0 / (cy2*cy2);
 			complex<double> result = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_Dy);
 			complex<double> result2 = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_y1*mean_R2l_vs_y2);
-			cout << Delta_y << "   " << dNdy << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   " << result.real() << "   " << result2.real() << endl;
+			cout << chosen_trajectory << "   " << CN_tau_D << "   " << Delta_y << "   "
+					<< dNdy << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   "
+					<< result.real() << "   " << result2.real() << endl;
 		}
 	}
 

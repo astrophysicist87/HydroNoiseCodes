@@ -17,7 +17,8 @@ COMMAND=HNC
 OBJS= $(addsuffix .o, $(basename $(SRCS)))
 
 CC= g++
-CFLAGS=  -pg
+#CFLAGS=  -pg
+CFLAGS=
 WARNFLAGS= -ansi -pedantic -Wall -W \
    -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align \
    -Wwrite-strings -fshort-enums -fno-common 
