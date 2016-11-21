@@ -403,11 +403,9 @@ inline complex<double> Gtilde_n(double k, double t_p)
 	);
 }
 
-
-
-inline complex<double> Ctilde_s_s(double k)
+inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, double), complex<double> (*Gtilde_Y)(double, double), double k)
 {
-	complex<double> sum(0,0);
+	complex<double> locsum(0,0);
 	if (integration_mode == 1)
 	{
 		//lower section
@@ -416,10 +414,10 @@ inline complex<double> Ctilde_s_s(double k)
 			double t_loc = tau_pts_lower[it];
 			double T_loc = T_pts_lower[it];
 			double mu_loc = mu_pts_lower[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );		//MeV^{-3}
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_s(k, t_loc) * Gtilde_s(-k, t_loc);
-	}
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			locsum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
+					* (*Gtilde_X)(k, t_loc) * (*Gtilde_Y)(-k, t_loc);
+		}
 		//upper section
 		for (int it = 0; it < n_tau_pts; ++it)
 		{
@@ -427,8 +425,8 @@ inline complex<double> Ctilde_s_s(double k)
 			double T_loc = T_pts_upper[it];
 			double mu_loc = mu_pts_upper[it];
 			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_s(k, t_loc) * Gtilde_s(-k, t_loc);
+			locsum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
+					* (*Gtilde_X)(k, t_loc) * (*Gtilde_Y)(-k, t_loc);
 		}
 	}
 	else
@@ -440,362 +438,82 @@ inline complex<double> Ctilde_s_s(double k)
 			double T_loc = T_pts[it];
 			double mu_loc = mu_pts[it];
 			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_s(k, t_loc) * Gtilde_s(-k, t_loc);
+			locsum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
+					* (*Gtilde_X)(k, t_loc) * (*Gtilde_Y)(-k, t_loc);
 		}
 	}
 
-	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	return (locsum);
+}
+
+inline complex<double> Ctilde_s_s(double k)
+{
+	complex<double> sum(0,0);
+	sum = tau_integration(Gtilde_s, Gtilde_s, k);
+
 	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_s_omega(double k)
 {
 	complex<double> sum(0,0);
-	if (integration_mode == 1)
-	{
-		//lower section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_lower[it];
-			double T_loc = T_pts_lower[it];
-			double mu_loc = mu_pts_lower[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_s(k, t_loc) * Gtilde_omega(-k, t_loc);
-	}
-		//upper section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_upper[it];
-			double T_loc = T_pts_upper[it];
-			double mu_loc = mu_pts_upper[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_s(k, t_loc) * Gtilde_omega(-k, t_loc);
-		}
-	}
-	else
-	{
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts[it];
-			double T_loc = T_pts[it];
-			double mu_loc = mu_pts[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_s(k, t_loc) * Gtilde_omega(-k, t_loc);
-		}
-	}
+	sum = tau_integration(Gtilde_s, Gtilde_omega, k);
 
-	//return ( pow(hbarC, 4.0)*sum );	//fm^2
 	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_s_n(double k)
 {
 	complex<double> sum(0,0);
-	if (integration_mode == 1)
-	{
-		//lower section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_lower[it];
-			double T_loc = T_pts_lower[it];
-			double mu_loc = mu_pts_lower[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_s(k, t_loc) * Gtilde_n(-k, t_loc);
-	}
-		//upper section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_upper[it];
-			double T_loc = T_pts_upper[it];
-			double mu_loc = mu_pts_upper[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_s(k, t_loc) * Gtilde_n(-k, t_loc);
-		}
-	}
-	else
-	{
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts[it];
-			double T_loc = T_pts[it];
-			double mu_loc = mu_pts[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_s(k, t_loc) * Gtilde_n(-k, t_loc);
-		}
-	}
+	sum = tau_integration(Gtilde_s, Gtilde_n, k);
 
-	//return ( pow(hbarC, 4.0)*sum );	//fm^2
 	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_omega_s(double k)
 {
 	complex<double> sum(0,0);
-	if (integration_mode == 1)
-	{
-		//lower section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_lower[it];
-			double T_loc = T_pts_lower[it];
-			double mu_loc = mu_pts_lower[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_omega(k, t_loc) * Gtilde_s(-k, t_loc);
-	}
-		//upper section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_upper[it];
-			double T_loc = T_pts_upper[it];
-			double mu_loc = mu_pts_upper[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_omega(k, t_loc) * Gtilde_s(-k, t_loc);
-		}
-	}
-	else
-	{
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts[it];
-			double T_loc = T_pts[it];
-			double mu_loc = mu_pts[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_omega(k, t_loc) * Gtilde_s(-k, t_loc);
-		}
-	}
+	sum = tau_integration(Gtilde_omega, Gtilde_s, k);
 
-	//return ( pow(hbarC, 4.0)*sum );	//fm^2
 	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_omega_omega(double k)
 {
 	complex<double> sum(0,0);
-	if (integration_mode == 1)
-	{
-		//lower section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_lower[it];
-			double T_loc = T_pts_lower[it];
-			double mu_loc = mu_pts_lower[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_omega(k, t_loc) * Gtilde_omega(-k, t_loc);
-	}
-		//upper section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_upper[it];
-			double T_loc = T_pts_upper[it];
-			double mu_loc = mu_pts_upper[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_omega(k, t_loc) * Gtilde_omega(-k, t_loc);
-		}
-	}
-	else
-	{
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts[it];
-			double T_loc = T_pts[it];
-			double mu_loc = mu_pts[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_omega(k, t_loc) * Gtilde_omega(-k, t_loc);
-		}
-	}
-
-	//return ( pow(hbarC, 4.0)*sum );	//fm^2
+	sum = tau_integration(Gtilde_omega, Gtilde_omega, k);
 	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_omega_n(double k)
 {
 	complex<double> sum(0,0);
-	if (integration_mode == 1)
-	{
-		//lower section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_lower[it];
-			double T_loc = T_pts_lower[it];
-			double mu_loc = mu_pts_lower[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_omega(k, t_loc) * Gtilde_n(-k, t_loc);
-	}
-		//upper section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_upper[it];
-			double T_loc = T_pts_upper[it];
-			double mu_loc = mu_pts_upper[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_omega(k, t_loc) * Gtilde_n(-k, t_loc);
-		}
-	}
-	else
-	{
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts[it];
-			double T_loc = T_pts[it];
-			double mu_loc = mu_pts[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_omega(k, t_loc) * Gtilde_n(-k, t_loc);
-		}
-	}
+	sum = tau_integration(Gtilde_omega, Gtilde_n, k);
 
-	//return ( pow(hbarC, 4.0)*sum );	//fm^2
 	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_n_s(double k)
 {
 	complex<double> sum(0,0);
-	if (integration_mode == 1)
-	{
-		//lower section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_lower[it];
-			double T_loc = T_pts_lower[it];
-			double mu_loc = mu_pts_lower[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_n(k, t_loc) * Gtilde_s(-k, t_loc);
-	}
-		//upper section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_upper[it];
-			double T_loc = T_pts_upper[it];
-			double mu_loc = mu_pts_upper[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_n(k, t_loc) * Gtilde_s(-k, t_loc);
-		}
-	}
-	else
-	{
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts[it];
-			double T_loc = T_pts[it];
-			double mu_loc = mu_pts[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_n(k, t_loc) * Gtilde_s(-k, t_loc);
-		}
-	}
+	sum = tau_integration(Gtilde_n, Gtilde_s, k);
 
-	//return ( pow(hbarC, 4.0)*sum );	//fm^2
 	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_n_omega(double k)
 {
 	complex<double> sum(0,0);
-	if (integration_mode == 1)
-	{
-		//lower section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_lower[it];
-			double T_loc = T_pts_lower[it];
-			double mu_loc = mu_pts_lower[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_n(k, t_loc) * Gtilde_omega(-k, t_loc);
-	}
-		//upper section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_upper[it];
-			double T_loc = T_pts_upper[it];
-			double mu_loc = mu_pts_upper[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_n(k, t_loc) * Gtilde_omega(-k, t_loc);
-		}
-	}
-	else
-	{
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts[it];
-			double T_loc = T_pts[it];
-			double mu_loc = mu_pts[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_n(k, t_loc) * Gtilde_omega(-k, t_loc);
-		}
-	}
+	sum = tau_integration(Gtilde_n, Gtilde_omega, k);
 
-	//return ( pow(hbarC, 4.0)*sum );	//fm^2
 	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_n_n(double k)
 {
 	complex<double> sum(0,0);
-	complex<double> local_Ftn = Ftilde_n(k);
-	if (integration_mode == 1)
-	{
-		//lower section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_lower[it];
-			double T_loc = T_pts_lower[it];
-			double mu_loc = mu_pts_lower[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc);
-	}
-		//upper section
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			double t_loc = tau_pts_upper[it];
-			double T_loc = T_pts_upper[it];
-			double mu_loc = mu_pts_upper[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc);
-		}
-	}
-	else
-	{
-		for (int it = 0; it < n_tau_pts; ++it)
-		{
-			current_itau = it;
-			double t_loc = tau_pts[it];
-			double T_loc = T_pts[it];
-			double mu_loc = mu_pts[it];
-			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
-					* Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc);
-			cerr << "DETAILS: " << setprecision(10) << k << "   " << t_loc << "   "
-					<< local_Ftn.real() << "   " << local_Ftn.imag() << "   "
-					<< Gtilde_n(k, t_loc).real() << "   " << Gtilde_n(k, t_loc).imag() << "   "
-					<< (Gtilde_n(k, t_loc) * Gtilde_n(-k, t_loc)).real() << endl;
-		}
-	}
+	sum = tau_integration(Gtilde_n, Gtilde_n, k);
 
-	//return ( pow(hbarC, 4.0)*sum );	//fm^2
 	return ( sum );	//fm^2
 }
 

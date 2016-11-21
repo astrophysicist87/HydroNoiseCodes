@@ -24,12 +24,8 @@ WARNFLAGS= -ansi -pedantic -Wall -W \
 LDFLAGS= -lgsl -lgslcblas 
 LIBS= -L/sw/lib -I/sw/include
 
- 
 $(COMMAND): $(OBJS) $(HDRS) $(MAKEFILE) 
-	$(CC) -o $(COMMAND) $(OBJS) $(LDFLAGS) $(LIBS)
-
-#process_event5.o : process_event5.cpp process_event5.h
-#	$(CC) $(CFLAGS) $(WARNFLAGS) $(LIBS) -c process_event5.cpp -o process_event5.o
+	$(CC) $(CFLAGS) -o $(COMMAND) $(OBJS) $(LDFLAGS) $(LIBS)
 
 clean:
 	rm -f $(OBJS)

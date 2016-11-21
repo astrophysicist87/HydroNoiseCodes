@@ -30,6 +30,11 @@ const int particle_to_study = 1;	//1 is pion, 2 is proton
 const double hbarC = 197.33;
 const double k_infinity = 10.0;
 const double xi_infinity = 4.0;
+
+const int n_Dy = 1;
+
+//need these for colored noise expression
+double CN_tau_D, CN_tau_2, CN_v0;
 double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf;
 double mByT, alpha0, psi0;
 double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
@@ -39,24 +44,25 @@ double T0, mu0, Tc, Pc, nc, sc, wc, muc;
 double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD, si, ni;
 double a_at_tauf, vs2_at_tauf, vn2_at_tauf, vsigma2_at_tauf;
 
-double screw_it_up_factor;
 int current_ik;
 const double mu_pion = 1.e-3 / hbarC;
 double mu_proton, mu_part;
 
-const int n_xi_pts = 200;
-const int n_k_pts = 200;
-const int n_tau_pts = 200;
+const int n_xi_pts = 100;
+const int n_k_pts = 100;
+const int n_tau_pts = 100;
 double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
 double * tau_pts_lower, * tau_wts_lower;
-//double * tau_pts_middle, * tau_wts_middle;
 double * tau_pts_upper, * tau_wts_upper;
 double * T_pts, * mu_pts;
 double * T_pts_lower, * mu_pts_lower;
-//double * T_pts_middle, * mu_pts_middle;
 double * T_pts_upper, * mu_pts_upper;
+double * all_tau_pts, * all_tau_wts, * all_T_pts, * all_mu_pts;
+
+double ** Gtilde_s_pts, ** Gtilde_omega_pts, ** Gtilde_n_pts;
+double * tau_integral_factor_pts;
 
 int main(int argc, char *argv[])
 {
@@ -64,7 +70,6 @@ int main(int argc, char *argv[])
 	//Ti = 250.0;		//initial trajectory temperature
 	Ti = 250.0 / hbarC;		//initial trajectory temperature
 	double muis[3] = {420.0, 620.0, 820.0};
-	double screw_it_up_factors[3] = {0.0, 1.0, 2.0};
 	current_ik = 0;
 
 	int chosen_trajectory = atoi(argv[1]);
@@ -72,13 +77,13 @@ int main(int argc, char *argv[])
 	do_1p_calc = (bool)atoi(argv[2]);
 	do_HBT_calc = (bool)atoi(argv[3]);
 
-	//set the noise mode
+	//set the noise mode and related quantities
 	white_noise = bool(noise_mode == 0);
 	maxwell_cattaneo_noise = bool(noise_mode == 1);
-	gutrin_pipkin_noise = bool(noise_mode == 2);
-
-	//use this to see why all three trajectories zero at roughly same Delta_y point
-	screw_it_up_factor = screw_it_up_factors[chosen_trajectory];
+	gurtin_pipkin_noise = bool(noise_mode == 2);
+	CN_tau_D = 0.05;	//fm
+	CN_tau_2 = 0.05;	//fm, not used yet
+	CN_v0 = 0.1;		//dimensionless, not correct value, not used yet
 
 	mui = muis[chosen_trajectory];
 	mui /= hbarC;
@@ -162,6 +167,28 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, tauc, tauf, tau_pts_upper, tau_wts_upper);
 	populate_T_and_mu_vs_tau_part2();
 
+	//set combined tau points to simplify integration
+	all_tau_pts = new double [2*n_tau_pts];
+	all_tau_wts = new double [2*n_tau_pts];
+	all_T_pts = new double [2*n_tau_pts];
+	all_mu_pts = new double [2*n_tau_pts];
+	tau_integral_factor_pts = new double [2*n_tau_pts];
+	for (int it = 0; it < n_tau_pts; ++it)
+	{
+		all_tau_pts[it] = tau_pts_lower[it];
+		all_tau_wts[it] = tau_wts_lower[it];
+		all_T_pts[it] = T_pts_lower[it];
+		all_mu_pts[it] = mu_pts_lower[it];
+	}
+	for (int it = 0; it < n_tau_pts; ++it)
+	{
+		all_tau_pts[it+n_tau_pts] = tau_pts_upper[it];
+		all_tau_wts[it+n_tau_pts] = tau_wts_upper[it];
+		all_T_pts[it+n_tau_pts] = T_pts_upper[it];
+		all_mu_pts[it+n_tau_pts] = mu_pts_upper[it];
+	}
+	set_tau_integral_factor_pts();
+
 	//for (int it  = 0; it < n_tau_pts; it++)
 	//	cout << setprecision(15) << it << "   " << tau_pts[it]*1000.0/hbarC << "   " << T_pts[it]*hbarC / 1000.0 << "   " << mu_pts[it]*hbarC / 1000.0 << endl;
 
@@ -205,7 +232,7 @@ int main(int argc, char *argv[])
 			Ctnn_vec.push_back(Ctilde_n_n(k));
 		}
 
-		for (int iDy = 0; iDy < 51; iDy++)
+		for (int iDy = 0; iDy < n_Dy; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
 			complex<double> sum(0,0);
@@ -298,7 +325,7 @@ int main(int argc, char *argv[])
 			Ctnn_vec.push_back(Ctilde_n_n(k));
 		}
 
-		for (int iDy = 0; iDy < 51; iDy++)
+		for (int iDy = 0; iDy < n_Dy; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
 			//option #1

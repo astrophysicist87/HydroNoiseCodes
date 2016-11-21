@@ -177,6 +177,7 @@ int main(int argc, char *argv[])
 		for (int ik = 0; ik < n_k_pts; ++ik)
 		{
 			double k = k_pts[ik];
+			current_kwt = k_wts[ik];
 			Fts_vec.push_back(Ftilde_s(k));
 			Fto_vec.push_back(Ftilde_omega(k));
 			Ftn_vec.push_back(Ftilde_n(k));
@@ -282,9 +283,9 @@ int main(int argc, char *argv[])
 			Ctnn_vec.push_back(Ctilde_n_n(k));
 		}
 
-		for (int iDy = 0; iDy < 501; iDy++)
+		for (int iDy = 0; iDy < 51; iDy++)
 		{
-			double Delta_y = (double)iDy * 0.01;
+			double Delta_y = (double)iDy * 0.1;
 			//option #1
 			double y1 = Delta_y;
 			double y2 = 0.0;
