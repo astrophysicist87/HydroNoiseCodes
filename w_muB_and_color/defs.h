@@ -481,17 +481,20 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, doubl
 		{
 			double tA = all_tau_pts[it];
 			double tB = all_tau_pts[itp];
-			if ( abs(tA-tB) > 0.5*rc*(tA+tB) )
-				continue;
+			//if ( abs(tA-tB) > 0.5*rc*(tA+tB) )
+			//	continue;
 			double TA = all_T_pts[it];
 			double muA = all_mu_pts[it];
 			double TB = all_T_pts[itp];
 			double muB = all_mu_pts[itp];
-			double tbar = tA;	//generalize later to see how sensitive results are
-			double Tbar = TA;	//generalize later to see how sensitive results are
-			double mubar = muA;	//generalize later to see how sensitive results are
+			//double tbar = tA;	//generalize later to see how sensitive results are
+			//double Tbar = TA;	//generalize later to see how sensitive results are
+			//double mubar = muA;	//generalize later to see how sensitive results are
+			double tbar = tB;	//generalize later to see how sensitive results are
+			double Tbar = TB;	//generalize later to see how sensitive results are
+			double mubar = muB;	//generalize later to see how sensitive results are
 			double f = 0.5 * exp(-abs(tA - tB) / CN_tau_D) / CN_tau_D;
-			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_factor_pts[it]
+			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_factor_pts[itp]	//itp for point B
 					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar);
 		}
 	}

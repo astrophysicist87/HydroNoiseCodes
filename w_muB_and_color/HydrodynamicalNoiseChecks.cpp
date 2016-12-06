@@ -78,13 +78,14 @@ int main(int argc, char *argv[])
 	chosen_trajectory--;		//use for array indexing throughout
 	do_1p_calc = (bool)atoi(argv[2]);
 	do_HBT_calc = (bool)atoi(argv[3]);
-	rc = atof(argv[4]);
+	//rc = atof(argv[4]);
 
 	//set the noise mode and related quantities
 	white_noise = bool(noise_mode == 0);
 	maxwell_cattaneo_noise = bool(noise_mode == 1);
 	gurtin_pipkin_noise = bool(noise_mode == 2);
-	CN_tau_D = atof(argv[5]);	//fm
+	//CN_tau_D = atof(argv[5]);	//fm
+	CN_tau_D = atof(argv[4]);	//fm
 	CN_tau_2 = 0.05;	//fm, not used yet
 	CN_v0 = 0.1;		//dimensionless, not correct value, not used yet
 
@@ -294,7 +295,7 @@ int main(int argc, char *argv[])
 			//cerr << "SUMMARY: " << Delta_y << "   " << sum00.real() << "   " << sum01.real() << "   " << sum02.real() << "   "
 			//		<< sum10.real() << "   " << sum11.real() << "   " << sum12.real() << "   " << sum20.real() << "   "
 			//		<< sum21.real() << "   " << sum22.real() << "   " << sum.real() << "   " << result.real() << endl;
-			cout << setprecision(15) << rc << "   " << chosen_trajectory << "   " << CN_tau_D << "   " << Delta_y << "   " << result.real() << endl;
+			cout << setprecision(15) << rc << "   " << chosen_trajectory + 1 << "   " << CN_tau_D << "   " << Delta_y << "   " << result.real() << endl;
 		}
 	}
 
@@ -386,7 +387,7 @@ int main(int argc, char *argv[])
 			double mean_R2l_vs_y2 = 0.5*tauf*tauf*psi0 / (cy2*cy2);
 			complex<double> result = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_Dy);
 			complex<double> result2 = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_y1*mean_R2l_vs_y2);
-			cout << chosen_trajectory << "   " << CN_tau_D << "   " << Delta_y << "   "
+			cout << setprecision(15) << rc << "   " << chosen_trajectory << "   " << CN_tau_D << "   " << Delta_y << "   "
 					<< dNdy << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   "
 					<< result.real() << "   " << result2.real() << endl;
 		}
