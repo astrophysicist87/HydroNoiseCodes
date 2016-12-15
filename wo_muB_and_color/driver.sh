@@ -18,13 +18,23 @@
 
 chosenParticle="pion"
 
+direc1sp="results_1sp/`echo $chosenParticle`"
+direcHBT="results_HBT/`echo $chosenParticle`"
+
+if [ ! -d "$direc1sp" ]; then
+	mkdir $direc1sp
+fi
+if [ ! -d "$direcHBT" ]; then
+	mkdir $direcHBT
+fi
+
 for chosen_trajectory in 1 2 3
 do
-	for chosen_tau_D in 0.0 0.05 0.1
+	for chosen_tau_D in 0.0 0.05 0.1 0.5 1.0
 	do
 		echo $chosen_trajectory $chosen_tau_D at `date`
-		./HNC $chosen_trajectory 1 0 $chosen_tau_D >> results_1sp/`echo $chosenParticle`/`echo $chosenParticle`_results_1sp_tauB_sigmaTA_tauD_`echo $chosen_tau_D`.out &
-		./HNC $chosen_trajectory 0 1 $chosen_tau_D >> results_HBT/`echo $chosenParticle`/`echo $chosenParticle`_results_HBT_tauB_sigmaTA_tauD_`echo $chosen_tau_D`.out &
+		./HNC $chosen_trajectory 1 0 $chosen_tau_D >> $direc1sp/`echo $chosenParticle`_results_1sp_pointA_tauD_`echo $chosen_tau_D`.out &
+		./HNC $chosen_trajectory 0 1 $chosen_tau_D >> $direcHBT/`echo $chosenParticle`_results_HBT_pointA_tauD_`echo $chosen_tau_D`.out &
 	done
 	wait
 done

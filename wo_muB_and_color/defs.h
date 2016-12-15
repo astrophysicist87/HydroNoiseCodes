@@ -166,6 +166,14 @@ inline void set_tau_integral_factor_pts()
 		double t_loc = tau_pts[it];
 		tau_integral_factor_pts[it] = wEnth(t_loc);
 	}
+	for (int it = 0; it < n_tau_pts; ++it)
+	for (int itp = 0; itp < n_tau_pts; ++itp)
+	{
+		double tA = tau_pts[it];
+		double tB = tau_pts[itp];
+		double tbar = 0.5 * ( tA + tB );
+		tau_integral_midpoint_factor_pts[it][itp] = wEnth(tbar);
+	}
 
 	return;
 }
@@ -199,9 +207,15 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, doubl
 			double tA = tau_pts[it];
 			double tB = tau_pts[itp];
 			double tbar = tA;
+//			double tbar = tB;
+//			double tbar = 0.5*(tA+tB);
 			double f = 0.5 * exp(-abs(tA - tB) / CN_tau_D) / CN_tau_D;
 			locsum += tau_wts[it] * tau_wts[itp]	//evaluates thermal conductivity at point A
 					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar * tau_integral_factor_pts[it]);
+//			locsum += tau_wts[it] * tau_wts[itp]	//evaluates thermal conductivity at point A
+//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar * tau_integral_factor_pts[itp]);
+//			locsum += tau_wts[it] * tau_wts[itp]	//evaluates thermal conductivity at point A
+//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar * tau_integral_factor_pts[it][itp]);
 		}
 	}
 
