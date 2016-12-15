@@ -50,9 +50,9 @@ int current_ik;
 const double mu_pion = 1.e-3 / hbarC;
 double mu_proton, mu_part;
 
-const int n_xi_pts = 100;
-const int n_k_pts = 100;
-const int n_tau_pts = 500;
+const int n_xi_pts = 200;
+const int n_k_pts = 200;
+const int n_tau_pts = 200;
 double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
@@ -65,6 +65,7 @@ double * all_tau_pts, * all_tau_wts, * all_T_pts, * all_mu_pts;
 
 double ** Gtilde_s_pts, ** Gtilde_omega_pts, ** Gtilde_n_pts;
 double * tau_integral_factor_pts;
+double ** tau_integral_midpoint_factor_pts;
 
 int main(int argc, char *argv[])
 {
@@ -81,13 +82,16 @@ int main(int argc, char *argv[])
 	//rc = atof(argv[4]);
 
 	//set the noise mode and related quantities
-	white_noise = bool(noise_mode == 0);
-	maxwell_cattaneo_noise = bool(noise_mode == 1);
-	gurtin_pipkin_noise = bool(noise_mode == 2);
+	//white_noise = bool(noise_mode == 0);
+	//maxwell_cattaneo_noise = bool(noise_mode == 1);
+	//gurtin_pipkin_noise = bool(noise_mode == 2);
 	//CN_tau_D = atof(argv[5]);	//fm
 	CN_tau_D = atof(argv[4]);	//fm
 	CN_tau_2 = 0.05;	//fm, not used yet
 	CN_v0 = 0.1;		//dimensionless, not correct value, not used yet
+	white_noise = bool(CN_tau_D < 1.e-6);
+	maxwell_cattaneo_noise = not white_noise;
+	gurtin_pipkin_noise = false;
 
 	mui = muis[chosen_trajectory];
 	mui /= hbarC;
@@ -177,6 +181,9 @@ int main(int argc, char *argv[])
 	all_T_pts = new double [2*n_tau_pts];
 	all_mu_pts = new double [2*n_tau_pts];
 	tau_integral_factor_pts = new double [2*n_tau_pts];
+	tau_integral_midpoint_factor_pts = new double * [2*n_tau_pts];
+	for (int it = 0; it < 2*n_tau_pts; ++it)
+		tau_integral_midpoint_factor_pts[it] = new double [2*n_tau_pts];
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		all_tau_pts[it] = tau_pts_lower[it];
@@ -192,6 +199,7 @@ int main(int argc, char *argv[])
 		all_mu_pts[it+n_tau_pts] = mu_pts_upper[it];
 	}
 	set_tau_integral_factor_pts();
+//if (1) return (0);
 
 	//for (int it  = 0; it < n_tau_pts; it++)
 	//	cout << setprecision(15) << it << "   " << tau_pts[it]*1000.0/hbarC << "   " << T_pts[it]*hbarC / 1000.0 << "   " << mu_pts[it]*hbarC / 1000.0 << endl;

@@ -251,7 +251,8 @@ double interpCubicNonDirect(double * x, double * y, double xi, long size, bool r
 		if (!returnflag)	//i.e., if returnflag is false, exit
 		{
 			cerr << "interpCubicNonDirect(): index out of range!  Aborting!" << endl
-				<< "interpCubicNonDirect(): size = " << size << ", x0 = " << xi << ", " << "idx=" << idx << endl;
+				<< "interpCubicNonDirect(): size = " << size << ", x0 = " << xi << ", " << "idx=" << idx
+				<< ": not in range [" << x[0] << "," << x[size-1] << "]!" << endl;
 			exit(1);
 		}
 		else
@@ -277,6 +278,15 @@ double interpCubicNonDirect(double * x, double * y, double xi, long size, bool r
     long double y0 = y[idx-1], y1 = y[idx], y2 = y[idx+1], y3 = y[idx+2];
     long double y01=y0-y1, y02=y0-y2, y03=y0-y3, y12=y1-y2, y13=y1-y3, y23=y2-y3;
     long double x0 = x[idx-1], x1 = x[idx], x2 = x[idx+1], x3 = x[idx+2];
+	double x_interval = abs(x0-x3);
+	/*if (x_interval<0.01)	//avoid round-off error if spacing is small by re-scaling x-spacings
+	{
+		x0 /= x_interval;
+		x1 /= x_interval;
+		x2 /= x_interval;
+		x3 /= x_interval;
+		xi /= x_interval;
+	}*/
     long double x01=x0-x1, x02=x0-x2, x03=x0-x3, x12=x1-x2, x13=x1-x3, x23=x2-x3;
     long double x0s=x0*x0, x1s=x1*x1, x2s=x2*x2, x3s=x3*x3;
     long double denominator = x01*x02*x12*x03*x13*x23;
@@ -304,6 +314,9 @@ double interpCubicNonDirect(double * x, double * y, double xi, long size, bool r
           + x2*(-x3s*y01-x0s*y13)
           + x1s*(-x3*y02+x2*y03-x0*y23)
           )/denominator;
+	//if (returnflag) cerr << xi << "   " << x01 << "   " << x02 << "   " << x03 << "   " << x12 << "   " << x13 << "   " << x23 << "   "
+	//			<< x0s << "   " << x1s << "   " << x2s << "   " << x3s 
+	//			<< "   " << C0 << "   " << C1 << "   " << C2 << "   " << C3 << "   " << denominator << "   " << C0 + C1*xi + C2*xi*xi + C3*xi*xi*xi << endl;
     return C0 + C1*xi + C2*xi*xi + C3*xi*xi*xi;
   }
 }

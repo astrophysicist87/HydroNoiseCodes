@@ -61,6 +61,7 @@ extern double a_at_tauf, vs2_at_tauf, vn2_at_tauf, vsigma2_at_tauf;
 
 double *** noise_integral_points;
 extern double * tau_integral_factor_pts;
+extern double ** tau_integral_midpoint_factor_pts;
 
 //general functions
 inline double Omega(double x)
@@ -440,14 +441,32 @@ inline complex<double> Gtilde_n(double k, double t_p)
 
 inline void set_tau_integral_factor_pts()
 {
+	//ofstream out("all_T_mu_v_tau.dat");
 	for (int it = 0; it < 2*n_tau_pts; ++it)
 	{
 		double t_loc = all_tau_pts[it];
 		double T_loc = all_T_pts[it];
 		double mu_loc = all_mu_pts[it];
+		//out << t_loc << "   " << T_loc << "   " << mu_loc << endl;
 		double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
 		tau_integral_factor_pts[it] = Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0);
 	}
+	//out.close();
+	//ofstream out2("all_T_mu_v_taubar.dat");
+	for (int it = 0; it < 2*n_tau_pts; ++it)
+	for (int itp = 0; itp < 2*n_tau_pts; ++itp)
+	{
+		double tA = all_tau_pts[it];
+		double tB = all_tau_pts[itp];
+		double tbar = 0.5 * ( tA + tB );
+		double T_loc = interpolate1D(tau_pts, T_pts, tbar, n_tau_pts, 0, false, true);
+		double mu_loc = interpolate1D(tau_pts, mu_pts, tbar, n_tau_pts, 0, false, true);
+		//out2 << tbar << "   " << T_loc << "   " << mu_loc << endl;
+		double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+		tau_integral_midpoint_factor_pts[it][itp] = Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0);
+	}
+	//out2.close();
+
 	return;
 }
 
@@ -481,21 +500,21 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, doubl
 		{
 			double tA = all_tau_pts[it];
 			double tB = all_tau_pts[itp];
-			//if ( abs(tA-tB) > 0.5*rc*(tA+tB) )
-			//	continue;
 			double TA = all_T_pts[it];
 			double muA = all_mu_pts[it];
 			double TB = all_T_pts[itp];
 			double muB = all_mu_pts[itp];
-			//double tbar = tA;	//generalize later to see how sensitive results are
-			//double Tbar = TA;	//generalize later to see how sensitive results are
-			//double mubar = muA;	//generalize later to see how sensitive results are
-			double tbar = tB;	//generalize later to see how sensitive results are
-			double Tbar = TB;	//generalize later to see how sensitive results are
-			double mubar = muB;	//generalize later to see how sensitive results are
+//
+//			double tbar = tA;
+			double tbar = tB;
+//			double tbar = 0.5*(tA+tB);
 			double f = 0.5 * exp(-abs(tA - tB) / CN_tau_D) / CN_tau_D;
-			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_factor_pts[itp]	//itp for point B
+			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_factor_pts[it]	//evaluates thermal conductivity at point A
 					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar);
+//			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_factor_pts[itp]	//evaluates thermal conductivity at point B
+//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar);
+//			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_midpoint_factor_pts[it][itp]
+//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar);
 		}
 	}
 	/*else if (gurtin_pipkin_noise)
@@ -986,17 +1005,24 @@ void break_up_integral(int nt, double &max_DL, double &tauc, double &width)
 	vector<double> Delta_lambda_vec;
 	vector<double> tpts;
 
+	/*ofstream out("T_mu_v_tau_ORIGINAL.dat");
+	for (int it = 0; it < n_tau_pts; ++it)
+		out << tau_pts[it] << "   " << T_pts[it] << "   " << mu_pts[it] << endl;
+	out.close();*/
+
 	//check Delta_lambda
+	//ofstream out2("T_mu_v_tau_SUPERDENSE.dat");
 	for (int it = 1; it < nt; ++it)
 	{
 		double t_loc = taui + 0.5 + (double)it * Delta_t;
-		double T_loc = interpolate1D(tau_pts, T_pts, t_loc, n_tau_pts, 1, false);
-		double mu_loc = interpolate1D(tau_pts, mu_pts, t_loc, n_tau_pts, 1, false);
+		double T_loc = interpolate1D(tau_pts, T_pts, t_loc, n_tau_pts, 0, false);
+		double mu_loc = interpolate1D(tau_pts, mu_pts, t_loc, n_tau_pts, 0, false);
 		double DL = Delta_lambda(T_loc, mu_loc);
 		Delta_lambda_vec.push_back(DL);
 		tpts.push_back(t_loc);
-		//cout << t_loc << "   " << DL << endl;
+		//out2 << t_loc << "   " << T_loc << "   " << mu_loc << endl;
 	}
+	//out2.close();
 	std::vector<double>::iterator result = std::max_element(Delta_lambda_vec.begin(), Delta_lambda_vec.end());
     int idx = std::distance(Delta_lambda_vec.begin(), result);
 	max_DL = Delta_lambda_vec[idx];
