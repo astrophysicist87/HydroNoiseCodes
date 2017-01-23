@@ -22,10 +22,12 @@ bool do_HBT_calc;
 bool scale_out_y_dependence = false;
 const int particle_to_study = 1;	//1 is pion, 2 is proton
 
-const double hbarC = 197.33;
+const double hbarC = 200.0;
 const double k_infinity = 10.0;
 const double xi_infinity = 4.0;
-double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf;
+const int n_Dy = 1;
+
+double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf, s_at_mu_part;
 double mByT, alpha0, psi0;
 double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
@@ -41,7 +43,7 @@ double mu_proton, mu_part;
 
 const int n_xi_pts = 200;
 const int n_k_pts = 200;
-const int n_tau_pts = 200;
+const int n_tau_pts = 2000;
 double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
@@ -94,6 +96,7 @@ int main(int argc, char *argv[])
 	mu_proton = muf;
 	mu_part = (particle_to_study == 1) ? mu_pion : mu_proton;
 	//mu_part = muf;
+	s_at_mu_part = s(Tf, mu_part);
 
     // initialize other parameters
     nu = 1.0 / (3.0 * M_PI);
@@ -102,9 +105,12 @@ int main(int argc, char *argv[])
 	mByT = m / Tf;
 
 	//set the susceptibilities
-	double chi_mu_mu = chi_mumu(Tf, muf);
-	double chi_T_mu = chi_Tmu(Tf, muf);
-	double chi_T_T = chi_TT(Tf, muf);
+	//double chi_mu_mu = chi_mumu(Tf, muf);
+	//double chi_T_mu = chi_Tmu(Tf, muf);
+	//double chi_T_T = chi_TT(Tf, muf);
+	double chi_mu_mu = chi_mumu(Tf, mu_part);
+	double chi_T_mu = chi_Tmu(Tf, mu_part);
+	double chi_T_T = chi_TT(Tf, mu_part);
 	Delta = chi_mu_mu * chi_T_T - chi_T_mu * chi_T_mu;
 	chi_tilde_mu_mu = chi_mu_mu / Delta;
 	chi_tilde_T_mu = chi_T_mu / Delta;
@@ -152,19 +158,14 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, tauc, tauf, tau_pts_upper, tau_wts_upper);
 	populate_T_and_mu_vs_tau_part2();
 
-	//for (int it  = 0; it < n_tau_pts; it++)
-	//	cout << setprecision(15) << it << "   " << tau_pts[it]*1000.0/hbarC << "   " << T_pts[it]*hbarC / 1000.0 << "   " << mu_pts[it]*hbarC / 1000.0 << endl;
+	for (int it  = 0; it < n_tau_pts; it++)
+		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it]
+				<< "   " << mu_pts_lower[it]/T_pts_lower[it] << "   " << 1.0-vsigma2(T_pts_lower[it], mu_pts_lower[it]) << endl;
+	for (int it  = 0; it < n_tau_pts; it++)
+		cout << setprecision(15) << it+n_tau_pts << "   " << tau_pts_upper[it] << "   " << T_pts_upper[it] << "   " << mu_pts_upper[it]
+				<< "   " << mu_pts_upper[it]/T_pts_upper[it] << "   " << 1.0-vsigma2(T_pts_upper[it], mu_pts_upper[it]) << endl;
 
-	//if (1) return (0);
-
-	/*cout << hbarC*Tf << "   " << hbarC*muf << "   " << hbarC*hbarC*hbarC*sf << "   " << chi_tilde_mu_mu/(hbarC*hbarC) << "   " << chi_tilde_T_mu/(hbarC*hbarC) << "   " << chi_tilde_T_T/(hbarC*hbarC) << endl << endl;
-
-	for (int ix = 0; ix < 21; ix++)
-	{
-		double x = -1.0 + (double)ix * 0.1;
-		cout << x << "   " << Fs(x) << "   " << Fomega(x) << "   " << Fn(x) << endl;
-	}
-	if (1) return (0);*/
+	if (1) return (0);
 
 	if (do_1p_calc)
 	{
@@ -192,9 +193,9 @@ int main(int argc, char *argv[])
 			Ctnn_vec.push_back(Ctilde_n_n(k));
 		}
 
-		for (int iDy = 0; iDy < 51; iDy++)
+		for (int iDy = 0; iDy < n_Dy; iDy++)
 		{
-			double Delta_y = (double)iDy * 0.1;
+			double Delta_y = (double)iDy * 0.05;
 			current_DY = Delta_y;
 			complex<double> sum(0,0);
 			complex<double> sum00(0,0), sum01(0,0), sum02(0,0), sum10(0,0), sum11(0,0), sum12(0,0), sum20(0,0), sum21(0,0), sum22(0,0);
@@ -253,7 +254,7 @@ int main(int argc, char *argv[])
 			//cerr << "SUMMARY: " << Delta_y << "   " << sum00.real() << "   " << sum01.real() << "   " << sum02.real() << "   "
 			//		<< sum10.real() << "   " << sum11.real() << "   " << sum12.real() << "   " << sum20.real() << "   "
 			//		<< sum21.real() << "   " << sum22.real() << "   " << sum.real() << "   " << result.real() << endl;
-			cout << setprecision(15) << Delta_y << "   " << result.real() << endl;
+			cout << setprecision(15) << Delta_y << "   " << 1.0*result.real() << endl;
 		}
 	}
 
@@ -283,9 +284,9 @@ int main(int argc, char *argv[])
 			Ctnn_vec.push_back(Ctilde_n_n(k));
 		}
 
-		for (int iDy = 0; iDy < 51; iDy++)
+		for (int iDy = 0; iDy < n_Dy; iDy++)
 		{
-			double Delta_y = (double)iDy * 0.1;
+			double Delta_y = (double)iDy * 0.05;
 			//option #1
 			double y1 = Delta_y;
 			double y2 = 0.0;

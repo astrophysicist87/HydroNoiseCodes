@@ -401,6 +401,7 @@ inline complex<double> Gtilde_s(double k, double t_p)
 {
 	double T_loc = Tf;		//second argument always evaluated at t = tau_f
 	double mu_loc = muf;	//second argument always evaluated at t = tau_f
+	//double mu_loc = mu_part;	//second argument always evaluated at t = tau_f
 	complex<double> b = beta(k);
 	double t_by_tp = tauf / t_p;
 	double f0 = vs2_at_tauf;
@@ -416,6 +417,7 @@ inline complex<double> Gtilde_omega(double k, double t_p)
 {
 	double T_loc = Tf;		//second argument always evaluated at t = tau_f
 	double mu_loc = muf;	//second argument always evaluated at t = tau_f
+	//double mu_loc = mu_part;	//second argument always evaluated at t = tau_f
 	double t_by_tp = tauf / t_p;
 	complex<double> b = beta(k);
 	
@@ -428,6 +430,7 @@ inline complex<double> Gtilde_n(double k, double t_p)
 {
 	double T_loc = Tf;		//second argument always evaluated at t = tau_f
 	double mu_loc = muf;	//second argument always evaluated at t = tau_f
+	//double mu_loc = mu_part;	//second argument always evaluated at t = tau_f
 	complex<double> b = beta(k);
 	double t_by_tp = tauf / t_p;
 	double f0 = vn2_at_tauf;
@@ -505,8 +508,8 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, doubl
 			double TB = all_T_pts[itp];
 			double muB = all_mu_pts[itp];
 //
-//			double tbar = tA;
-			double tbar = tB;
+			double tbar = tA;
+//			double tbar = tB;
 //			double tbar = 0.5*(tA+tB);
 			double f = 0.5 * exp(-abs(tA - tB) / CN_tau_D) / CN_tau_D;
 			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_factor_pts[it]	//evaluates thermal conductivity at point A
@@ -638,7 +641,9 @@ inline double f2(double x1, double x2)
 {
 	double z = zeta(x1, x2);																//MeV^1	
 	double term1 = chi_tilde_mu_mu * cosh(x1) * pow(z, 5.0) * incompleteGamma5(m / z);		//MeV^3
-	double term2 = (chi_tilde_mu_mu * muf + chi_tilde_T_mu * Tf)
+	//double term2 = (chi_tilde_mu_mu * muf + chi_tilde_T_mu * Tf)
+	//				* pow(z, 4.0) * incompleteGamma4(m / z);								//MeV^3
+	double term2 = (chi_tilde_mu_mu * mu_part + chi_tilde_T_mu * Tf)
 					* pow(z, 4.0) * incompleteGamma4(m / z);								//MeV^3
 	return (sf * (term1 - term2) / (Tf*Tf));												//MeV^4
 }
@@ -652,7 +657,9 @@ inline double f3(double x1, double x2)
 inline double f4(double x1, double x2)
 {
 	double z = zeta(x1, x2);																//MeV^1
-	double term1 = (chi_tilde_T_mu*muf + chi_tilde_T_T*Tf)
+	//double term1 = (chi_tilde_T_mu*muf + chi_tilde_T_T*Tf)
+	//					* pow(z, 4.0) * incompleteGamma4(m / z);							//MeV^3
+	double term1 = (chi_tilde_T_mu*mu_part + chi_tilde_T_T*Tf)
 						* pow(z, 4.0) * incompleteGamma4(m / z);							//MeV^3
 	double term2 = chi_tilde_T_mu * cosh(x1) * pow(z, 5.0) * incompleteGamma5(m / z);		//MeV^3
 	return (sf * (term1 - term2)/(Tf*Tf));													//MeV^4

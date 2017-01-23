@@ -31,7 +31,7 @@ const double hbarC = 197.33;
 const double k_infinity = 10.0;
 const double xi_infinity = 4.0;
 
-const int n_Dy = 51;
+const int n_Dy = 1;
 
 double rc = 0.0;
 
@@ -128,6 +128,9 @@ int main(int argc, char *argv[])
 	double chi_mu_mu = chi_mumu(Tf, muf);
 	double chi_T_mu = chi_Tmu(Tf, muf);
 	double chi_T_T = chi_TT(Tf, muf);
+	//double chi_mu_mu = chi_mumu(Tf, mu_part);
+	//double chi_T_mu = chi_Tmu(Tf, mu_part);
+	//double chi_T_T = chi_TT(Tf, mu_part);
 	Delta = chi_mu_mu * chi_T_T - chi_T_mu * chi_T_mu;
 	chi_tilde_mu_mu = chi_mu_mu / Delta;
 	chi_tilde_T_mu = chi_T_mu / Delta;
@@ -393,6 +396,7 @@ int main(int argc, char *argv[])
 			double mean_R2l_vs_Dy = 0.5*tauf*tauf*psi0 / (cDy*cDy);
 			double mean_R2l_vs_y1 = 0.5*tauf*tauf*psi0 / (cy1*cy1);
 			double mean_R2l_vs_y2 = 0.5*tauf*tauf*psi0 / (cy2*cy2);
+			//factor of A comes "pre-cancelled" in following expressions
 			complex<double> result = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_Dy);
 			complex<double> result2 = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_y1*mean_R2l_vs_y2);
 			cout << setprecision(15) << rc << "   " << chosen_trajectory << "   " << CN_tau_D << "   " << Delta_y << "   "

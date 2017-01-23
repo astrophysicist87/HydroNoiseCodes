@@ -36,6 +36,7 @@ extern double * k_pts, * k_wts;
 extern double * tau_pts, * tau_wts;
 
 extern double * tau_integral_factor_pts;
+extern double ** tau_integral_midpoint_factor_pts;
 
 // my additional functions
 inline double Temperature(double tau)
@@ -195,8 +196,8 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, doubl
 		for (int it = 0; it < n_tau_pts; ++it)
 		{
 			double t_loc = tau_pts[it];
-			locsum += tau_wts[it] * pow(t_loc, -3.0) * tau_integral_factor_pts[it]
-					* Gtilde_X_pts[it] * Gtilde_Y_pts[it];
+			locsum += tau_wts[it] * pow(t_loc, -3.0)
+					* Gtilde_X_pts[it] * Gtilde_Y_pts[it] / tau_integral_factor_pts[it];
 		}
 	}
 	else if (maxwell_cattaneo_noise)
@@ -210,12 +211,12 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, doubl
 //			double tbar = tB;
 //			double tbar = 0.5*(tA+tB);
 			double f = 0.5 * exp(-abs(tA - tB) / CN_tau_D) / CN_tau_D;
-			locsum += tau_wts[it] * tau_wts[itp]	//evaluates thermal conductivity at point A
-					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar * tau_integral_factor_pts[it]);
 //			locsum += tau_wts[it] * tau_wts[itp]	//evaluates thermal conductivity at point A
-//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar * tau_integral_factor_pts[itp]);
-//			locsum += tau_wts[it] * tau_wts[itp]	//evaluates thermal conductivity at point A
-//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar * tau_integral_factor_pts[it][itp]);
+//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar * tau_integral_factor_pts[it]);
+			locsum += tau_wts[it] * tau_wts[itp]	//evaluates thermal conductivity at point B
+					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar * tau_integral_factor_pts[itp]);
+//			locsum += tau_wts[it] * tau_wts[itp]	//evaluates thermal conductivity at midpoint
+//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar * tau_integral_midpoint_factor_pts[it][itp]);
 		}
 	}
 

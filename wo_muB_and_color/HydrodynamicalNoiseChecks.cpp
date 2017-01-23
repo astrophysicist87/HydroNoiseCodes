@@ -15,7 +15,6 @@ using namespace std;
 
 bool do_1p_calc;
 bool do_HBT_calc;
-bool scale_out_y_dependence = true;
 
 bool white_noise, maxwell_cattaneo_noise;
 int noise_mode = 0;		// 0 - white noise
@@ -36,6 +35,7 @@ double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
 
 double * tau_integral_factor_pts;
+double ** tau_integral_midpoint_factor_pts;
 
 int main(int argc, char *argv[])
 {
@@ -86,6 +86,9 @@ int main(int argc, char *argv[])
     k_wts = new double [n_k_pts];
 
 	tau_integral_factor_pts = new double [n_tau_pts];
+	tau_integral_midpoint_factor_pts = new double * [n_tau_pts];
+	for (int it = 0; it < n_tau_pts; ++it)
+		tau_integral_midpoint_factor_pts[it] = new double [n_tau_pts];
 
     int tmp = gauss_quadrature(n_xi_pts, 1, 0.0, 0.0, 0.0, xi_infinity, xi_pts_0_inf, xi_wts_0_inf);
     tmp = gauss_quadrature(n_xi_pts, 1, 0.0, 0.0, -xi_infinity, xi_infinity, xi_pts_minf_inf, xi_wts_minf_inf);
@@ -112,15 +115,13 @@ int main(int argc, char *argv[])
 			Ctoo_vec.push_back(Ctilde_omega_omega(k));
 		}
 
-		for (int iDy = 0; iDy < 31; iDy++)
+		for (int iDy = 0; iDy < 241; iDy++)
 		{
-			double Delta_y = (double)iDy * 0.2;
+			double Delta_y = (double)iDy * 0.025;
 			complex<double> sum(0,0);
 			for (int ik = 0; ik < n_k_pts; ++ik)
 			{
 				double k = k_pts[ik];
-				//complex<double> Ftr = Ftilde_rho(k);
-				//complex<double> Fto = Ftilde_omega(k);
 				complex<double> Ftr = Ftr_vec[ik];
 				complex<double> Fto = Fto_vec[ik];
 				sum += k_wts[ik] * exp(i * k * Delta_y)
@@ -140,9 +141,23 @@ int main(int argc, char *argv[])
 		alpha0 = 1.0 / integrate_2D(alpha0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
 		phi0 = integrate_2D(phi0_int, xi_pts_minf_inf, xi_pts_minf_inf, xi_wts_minf_inf, xi_wts_minf_inf, n_xi_pts, n_xi_pts);
 		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
-		for (int iDy = 0; iDy < 1; iDy++)
+		vector<complex<double> > gtr_vec, gto_vec;
+		vector<complex<double> > Ctrr_vec, Ctro_vec, Ctor_vec, Ctoo_vec;
+
+		for (int ik = 0; ik < n_k_pts; ++ik)
 		{
-			double Delta_y = (double)iDy * 0.1;
+			double k = k_pts[ik];
+			gtr_vec.push_back(gt_rho(k));
+			gto_vec.push_back(gt_omega(k));
+			Ctrr_vec.push_back(Ctilde_rho_rho(k));
+			Ctro_vec.push_back(Ctilde_rho_omega(k));
+			Ctor_vec.push_back(Ctilde_omega_rho(k));
+			Ctoo_vec.push_back(Ctilde_omega_omega(k));
+		}
+
+		for (int iDy = 0; iDy < 241; iDy++)
+		{
+			double Delta_y = (double)iDy * 0.025;
 			//option #1
 			double y1 = Delta_y;
 			double y2 = 0.0;
@@ -156,20 +171,17 @@ int main(int argc, char *argv[])
 			double cy1 = cosh(y1);
 			double cy2 = cosh(y2);
 			double cDy = cosh(y1-y2);
-			double scale_out_y_dep_factor = 1.0;
-			if (scale_out_y_dependence)
-				scale_out_y_dep_factor = cy1*cy1*cy2*cy2 / (cDy*cDy);
 			complex<double> sum(0,0);
 			for (int ik = 0; ik < n_k_pts; ++ik)
 			{
 				double k = k_pts[ik];
-				complex<double> gt_r = gt_rho(k);
-				complex<double> gt_o = gt_omega(k);
+				complex<double> gt_r = gtr_vec[ik];
+				complex<double> gt_o = gto_vec[ik];
 				sum += k_wts[ik] * exp(i * k * Delta_y)
-						* ( gt_r * conj(gt_r) * Ctilde_rho_rho(k)
-							+ gt_r * conj(gt_o) * Ctilde_rho_omega(k)
-							+ gt_o * conj(gt_r) * Ctilde_omega_rho(k)
-							+ gt_o * conj(gt_o) * Ctilde_omega_omega(k) )
+						* ( gt_r * conj(gt_r) * Ctrr_vec[ik]
+							+ gt_r * conj(gt_o) * Ctro_vec[ik]
+							+ gt_o * conj(gt_r) * Ctor_vec[ik]
+							+ gt_o * conj(gt_o) * Ctoo_vec[ik] )
 						/ (cy1*cy1*cy2*cy2);
 //cout << k << "   " << gt_r * conj(gt_r) << "   " << gt_r * conj(gt_o) << "   " << gt_o * conj(gt_r) << "   " << gt_o * conj(gt_o) << "   "
 //		<< Ctilde_rho_rho(k) << "   " << Ctilde_rho_omega(k)<< "   " << Ctilde_omega_rho(k) << "   " << Ctilde_omega_omega(k) << endl;
@@ -179,9 +191,9 @@ int main(int argc, char *argv[])
 			double mean_R2l_vs_Dy = 0.5*tauf*tauf*phi0 / (cDy*cDy);
 			double mean_R2l_vs_y1 = 0.5*tauf*tauf*phi0 / (cy1*cy1);
 			double mean_R2l_vs_y2 = 0.5*tauf*tauf*phi0 / (cy2*cy2);
-			complex<double> result = (ds*tauf*Tf*Tf*Tf / (4.0*M_PI*M_PI))*norm*scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_Dy);
-			complex<double> result2 = (ds*tauf*Tf*Tf*Tf / (4.0*M_PI*M_PI))*norm*scale_out_y_dep_factor * sum / (2.*M_PI*mean_R2l_vs_y1*mean_R2l_vs_y2);
-			cout << Delta_y << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   " << result.real() << "   " << result2.real() << endl;
+			complex<double> result = (ds*tauf*Tf*Tf*Tf / (4.0*M_PI*M_PI))*norm*sum / (2.*M_PI*mean_R2l_vs_Dy);
+			complex<double> result2 = (ds*tauf*Tf*Tf*Tf / (4.0*M_PI*M_PI))*norm*sum / (2.*M_PI*mean_R2l_vs_y1*mean_R2l_vs_y2);
+			cout << Delta_y << "   " << norm << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   " << result.real() << "   " << result2.real() << endl;
 		}
 	}
 

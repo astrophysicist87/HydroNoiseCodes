@@ -26,11 +26,12 @@ void inline debugger(int cln, const char* cfn)
 
 extern const double hbarC;
 
-int integration_mode = 1;
+int integration_mode = 2;
+bool include_baryon_chemical_potential_fluctations = true;
 extern const double mu_pion;
 extern double mu_part, mu_proton;
 
-extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf;
+extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf, s_at_mu_part;
 extern double mByT, alpha0, psi0;
 extern double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
@@ -312,9 +313,9 @@ inline double Fs(double x)
 {
 	double cx = cosh(x);
 	
-	double c1 = sf * chi_tilde_mu_mu;
+	double c1 = s_at_mu_part * chi_tilde_mu_mu;
 	//double c2 = -sf * (chi_tilde_T_mu + chi_tilde_mu_mu * muf / Tf);
-	double c2 = -sf * (chi_tilde_T_mu + chi_tilde_mu_mu * mu_part / Tf);
+	double c2 = -s_at_mu_part * double(include_baryon_chemical_potential_fluctations) * (chi_tilde_T_mu + chi_tilde_mu_mu * mu_part / Tf);
 
 	return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (cx*cx) );
 }
@@ -331,9 +332,9 @@ inline double Fn(double x)
 {
 	double cx = cosh(x);
 	
-	double c1 = -sf * chi_tilde_T_mu;
+	double c1 = -s_at_mu_part * chi_tilde_T_mu;
 	//double c2 = sf * (chi_tilde_T_T + chi_tilde_T_mu * muf / Tf);
-	double c2 = sf * (chi_tilde_T_T + chi_tilde_T_mu * mu_part / Tf);
+	double c2 = s_at_mu_part * double(include_baryon_chemical_potential_fluctations) * (chi_tilde_T_T + chi_tilde_T_mu * mu_part / Tf);
 
 	return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (cx*cx) );
 }
@@ -543,9 +544,10 @@ inline double f2(double x1, double x2)
 {
 	double z = zeta(x1, x2);																//MeV^1	
 	double term1 = chi_tilde_mu_mu * cosh(x1) * pow(z, 5.0) * incompleteGamma5(m / z);		//MeV^3
-	double term2 = (chi_tilde_mu_mu * muf + chi_tilde_T_mu * Tf)
+	double term2 =  double(include_baryon_chemical_potential_fluctations)
+					* (chi_tilde_mu_mu * mu_part + chi_tilde_T_mu * Tf)
 					* pow(z, 4.0) * incompleteGamma4(m / z);								//MeV^3
-	return (sf * (term1 - term2) / (Tf*Tf));												//MeV^4
+	return (s_at_mu_part * (term1 - term2) / (Tf*Tf));												//MeV^4
 }
 
 inline double f3(double x1, double x2)
@@ -557,10 +559,11 @@ inline double f3(double x1, double x2)
 inline double f4(double x1, double x2)
 {
 	double z = zeta(x1, x2);																//MeV^1
-	double term1 = (chi_tilde_T_mu*muf + chi_tilde_T_T*Tf)
+	double term1 = double(include_baryon_chemical_potential_fluctations)
+					* (chi_tilde_T_mu*mu_part + chi_tilde_T_T*Tf)
 						* pow(z, 4.0) * incompleteGamma4(m / z);							//MeV^3
 	double term2 = chi_tilde_T_mu * cosh(x1) * pow(z, 5.0) * incompleteGamma5(m / z);		//MeV^3
-	return (sf * (term1 - term2)/(Tf*Tf));													//MeV^4
+	return (s_at_mu_part * (term1 - term2)/(Tf*Tf));													//MeV^4
 }
 
 inline double get_alpha0()
