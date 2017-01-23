@@ -22,7 +22,7 @@ bool do_HBT_calc;
 bool scale_out_y_dependence = false;
 const int particle_to_study = 1;	//1 is pion, 2 is proton
 
-const double hbarC = 200.0;
+const double hbarC = 197.33;
 const double k_infinity = 10.0;
 const double xi_infinity = 4.0;
 const int n_Dy = 1;
@@ -43,7 +43,7 @@ double mu_proton, mu_part;
 
 const int n_xi_pts = 200;
 const int n_k_pts = 200;
-const int n_tau_pts = 2000;
+const int n_tau_pts = 200;
 double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
@@ -158,14 +158,14 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, tauc, tauf, tau_pts_upper, tau_wts_upper);
 	populate_T_and_mu_vs_tau_part2();
 
-	for (int it  = 0; it < n_tau_pts; it++)
+	/*for (int it  = 0; it < n_tau_pts; it++)
 		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it]
 				<< "   " << mu_pts_lower[it]/T_pts_lower[it] << "   " << 1.0-vsigma2(T_pts_lower[it], mu_pts_lower[it]) << endl;
 	for (int it  = 0; it < n_tau_pts; it++)
 		cout << setprecision(15) << it+n_tau_pts << "   " << tau_pts_upper[it] << "   " << T_pts_upper[it] << "   " << mu_pts_upper[it]
 				<< "   " << mu_pts_upper[it]/T_pts_upper[it] << "   " << 1.0-vsigma2(T_pts_upper[it], mu_pts_upper[it]) << endl;
 
-	if (1) return (0);
+	if (1) return (0);*/
 
 	if (do_1p_calc)
 	{
