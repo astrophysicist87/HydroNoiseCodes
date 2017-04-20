@@ -20,7 +20,7 @@ using namespace std;
 bool do_1p_calc;
 bool do_HBT_calc;
 bool scale_out_y_dependence = false;
-const int particle_to_study = 1;	//1 is pion, 2 is proton
+const int particle_to_study = 2;	//1 is pion, 2 is proton
 
 const double hbarC = 197.33;
 const double k_infinity = 10.0;
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 	//Ti = 250.0;		//initial trajectory temperature
 	Ti = 250.0 / hbarC;		//initial trajectory temperature
 	double muis[3] = {420.0, 620.0, 820.0};
-	double screw_it_up_factors[3] = {0.0, 0.0, 0.0};
+	double screw_it_up_factors[3] = {0.2, 1.0, 5.0};
 	current_itau = 0;
 
 	int chosen_trajectory = atoi(argv[1]);
@@ -158,12 +158,39 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, tauc, tauf, tau_pts_upper, tau_wts_upper);
 	populate_T_and_mu_vs_tau_part2();
 
+	for (int it = 0; it < n_tau_pts; it++)
+	{
+		double T_loc = T_pts_lower[it];
+		double mu_loc = mu_pts_lower[it];
+		double arg = n(T_loc, mu_loc)/w(T_loc, mu_loc);
+		double result = Delta_lambda(T_loc, mu_loc)*T_loc*arg*arg;
+		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it] << "   " << result << endl;
+	}
+	for (int it = 0; it < n_tau_pts; it++)
+	{
+		double T_loc = T_pts_upper[it];
+		double mu_loc = mu_pts_upper[it];
+		double arg = n(T_loc, mu_loc)/w(T_loc, mu_loc);
+		double result = Delta_lambda(T_loc, mu_loc)*T_loc*arg*arg;
+		cout << setprecision(15) << it << "   " << tau_pts_upper[it] << "   " << T_pts_upper[it] << "   " << mu_pts_upper[it] << "   " << result << endl;
+	}
+	if (1) return (0);
+
 	/*for (int it  = 0; it < n_tau_pts; it++)
 		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it]
 				<< "   " << mu_pts_lower[it]/T_pts_lower[it] << "   " << 1.0-vsigma2(T_pts_lower[it], mu_pts_lower[it]) << endl;
 	for (int it  = 0; it < n_tau_pts; it++)
 		cout << setprecision(15) << it+n_tau_pts << "   " << tau_pts_upper[it] << "   " << T_pts_upper[it] << "   " << mu_pts_upper[it]
-				<< "   " << mu_pts_upper[it]/T_pts_upper[it] << "   " << 1.0-vsigma2(T_pts_upper[it], mu_pts_upper[it]) << endl;
+				<< "   " << mu_pts_upper[it]/T_pts_upper[it] << "   " << 1.0-vsigma2(T_pts_upper[it], mu_pts_upper[it]) << endl;*/
+
+	//cout << tauf << "   " << sPERn << "   " << sc/nc << endl;
+
+	/*for (int ik = 0; ik < n_k_pts; ++ik)
+	{
+		double k = k_pts[ik];
+		cout << chosen_trajectory + 1 << "   " << k << "   " << (Ftilde_n(k)*Ftilde_n(-k)).real()
+				<< "   " << Gtilde_n(k, tauf).real() << "   " << Gtilde_n(k, tauf).imag() << "   " << Ctilde_n_n(k).real() << endl;
+	}
 
 	if (1) return (0);*/
 
@@ -195,7 +222,7 @@ int main(int argc, char *argv[])
 
 		for (int iDy = 0; iDy < n_Dy; iDy++)
 		{
-			double Delta_y = (double)iDy * 0.05;
+			double Delta_y = (double)iDy * 0.1;
 			current_DY = Delta_y;
 			complex<double> sum(0,0);
 			complex<double> sum00(0,0), sum01(0,0), sum02(0,0), sum10(0,0), sum11(0,0), sum12(0,0), sum20(0,0), sum21(0,0), sum22(0,0);

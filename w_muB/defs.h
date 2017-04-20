@@ -27,7 +27,7 @@ void inline debugger(int cln, const char* cfn)
 extern const double hbarC;
 
 int integration_mode = 1;
-bool include_baryon_chemical_potential_fluctations = false;
+bool include_baryon_chemical_potential_fluctations = true;
 extern const double mu_pion;
 extern double mu_part, mu_proton;
 
@@ -253,6 +253,7 @@ inline double vn2(double T, double mu)
 {
 	return (
 		(1.0/3.0) - ( 2.0*C0*( A2*T*T + 6.0*A0*mu*mu ) ) / ( 9.0*d(T, mu) )
+		//screw_it_up_factor * ( (1.0/3.0) - ( 2.0*C0*( A2*T*T + 6.0*A0*mu*mu ) ) / ( 9.0*d(T, mu) ) )
 	);
 }
 
@@ -260,6 +261,7 @@ inline double vs2(double T, double mu)
 {
 	return (
 		(1.0/3.0) + ( ( 4.0*A2*C0*T*T ) / ( 9.0*d(T, mu) ) )
+		//screw_it_up_factor * ( (1.0/3.0) + ( ( 4.0*A2*C0*T*T ) / ( 9.0*d(T, mu) ) ) )
 	);
 }
 
@@ -400,7 +402,8 @@ inline complex<double> Gtilde_n(double k, double t_p)
 				<< k / vsigma2_at_tauf << endl;*/
 
 	return (
-		(i * k / vsigma2_at_tauf ) * (f0 + pref*f1)	 / (1.0 + screw_it_up_factor * k*k)		//dimensionless
+		//(i * k / vsigma2_at_tauf ) * (f0 + pref*f1)	 / (1.0 + screw_it_up_factor * k*k)		//dimensionless
+		(i * k / vsigma2_at_tauf ) * (f0 + pref*f1)		//dimensionless
 	);
 }
 
@@ -552,7 +555,7 @@ inline double f2(double x1, double x2)
 
 inline double f3(double x1, double x2)
 {
-	double z = zeta(x1, x2);										//MeV^0
+	double z = zeta(x1, x2);										//MeV^1
 	return ( sinh(x1)*pow(z, 5.0)*incompleteGamma5(m / z) / Tf );	//MeV^4
 }
 
