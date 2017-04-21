@@ -98,10 +98,9 @@ inline void read_in_transport_table(long filelength, string input_filename)
 	filename_stream << "./" << input_filename;
 	ifstream in(filename_stream.str().c_str());
 
-	double tmp;
 	for (int iline = 0; iline < filelength; ++iline)
 	{
-		in >> interp_T_pts[iline] >> tmp >> tmp >> tmp >> interp_transport_pts[iline] >> tmp;
+		in >> interp_T_pts[iline] >> interp_transport_pts[iline];
 		interp_T_pts[iline] /= hbarC;
 	}
 
@@ -219,7 +218,6 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double), comp
 			double sigma_By_Cem_T = interpolate1D(interp_T_pts, interp_transport_pts, T_loc, n_interp, 0, 1);
 			result += 4.0 * M_PI * Cem * tau_wts[it] * T_loc*T_loc*sigma_By_Cem_T / (s_loc*s_loc*tau3)
 						* (*Gtilde_X)(k) * (*Gtilde_Y)(-k);
-//cout << "v1: " << tau << "   " << 4.0 * M_PI * Cem * T_loc*T_loc << "   " << sigma_By_Cem_T << "   " << 4.0 * M_PI * Cem * T_loc*T_loc*sigma_By_Cem_T << endl;
 		}
 	}
 	else	//just use a constant value of 2*pi*D_Q*T and chi_Q
@@ -230,11 +228,9 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double), comp
 			double T_loc = T_pts[it];
 			double s_loc = s_vs_T(T_loc);
 			double tau3 = tau*tau*tau;
-			double chi_Q = chi_mu_mu;
-			//double chi_Q = chi_mumu(T_loc);
+			double chi_Q = chi_mumu(T_loc);
 			result += 2.0 * tau_wts[it] * two_pi_DQ_T * chi_Q / (s_loc*s_loc*tau3)
 						* (*Gtilde_X)(k) * (*Gtilde_Y)(-k);
-//cout << "v2: " << tau << "   " << 2.0 * two_pi_DQ_T << "   " << chi_Q << "   " << 2.0 * two_pi_DQ_T * chi_Q << endl;
 		}
 	}
 
@@ -331,7 +327,6 @@ int input_f (const gsl_vector * x, void * params, gsl_vector * f)
 
 void populate_T_vs_tau()
 {
-	//both sections together
 	for (int it = 0; it < n_tau_pts; ++it)
 	{
 		const gsl_multiroot_fsolver_type *gsl_T;

@@ -22,7 +22,7 @@ using namespace std;
 int particle_to_study;
 
 const double hbarC = 197.33;
-const double Cem = 8.0 * M_PI / (3.0 * 137.0);	//my current best guess
+const double Cem = 2.0 / 3.0;	//my current best guess
 const double k_infinity = 10.0;
 const double xi_infinity = 4.0;
 const int n_Dy = 51;
@@ -51,13 +51,33 @@ double * interp_T_pts, * interp_transport_pts;
 int main(int argc, char *argv[])
 {
 	//set parameters corresponding to all different possible trajectories
-	Ti = 250.0 / hbarC;		//initial trajectory temperature
 	particle_to_study = atoi(argv[1]);
+	Ti = atoi(argv[2]) / hbarC;		//initial trajectory temperature
 
 	set_phase_diagram_and_EOS_parameters();
 
 	//other constants
-	m = (particle_to_study == 1) ? 139.57 / hbarC : 939.0 / hbarC;
+	double Delta_y_step = 0.0;
+	switch (particle_to_study)
+	{
+		case 1:	//pion
+			m = 139.57 / hbarC;
+			Delta_y_step = 0.1;
+			break;
+		case 2:	//proton
+			m = 939.0 / hbarC;
+			Delta_y_step = 0.05;
+			break;
+		case 3:	//kaon
+			m = 493.68 / hbarC;
+			Delta_y_step = 0.075;
+			break;
+		default:
+			cerr << "Not a supported particle!" << endl;
+			exit(1);
+			break;
+	}
+
 	taui = 0.5;		//fm/c
 
 	si = s_vs_T(Ti);
@@ -142,16 +162,8 @@ int main(int argc, char *argv[])
 	complex<double> intercept_lattice(0,0), intercept_2piDQT_05(0,0), intercept_2piDQT_10(0,0), intercept_2piDQT_15(0,0);
 	for (int iDy = 0; iDy < n_Dy; iDy++)
 	{
-		double Delta_y = 0.0;
-		if (particle_to_study == 1)
-			Delta_y = (double)iDy * 0.1;		//pions
-		else if (particle_to_study == 2)
-			Delta_y = (double)iDy * 0.05;		//protons
-		else
-		{
-			cerr << "Not a supported particle!" << endl;
-			exit(1);
-		}
+		double Delta_y = (double)iDy * Delta_y_step;
+
 		complex<double> sum_lattice(0,0), sum_2piDQT_05(0,0), sum_2piDQT_10(0,0), sum_2piDQT_15(0,0);
 		for (int ik = 0; ik < n_k_pts; ++ik)
 		{
@@ -174,7 +186,7 @@ int main(int argc, char *argv[])
 		}
 
 		//adjust average value to get true charge balance function
-		if (iDy == 0)
+		if (iDy == 0)	//assume we start at Delta y == 0
 		{
 			intercept_lattice = sum_lattice;
 			intercept_2piDQT_05 = sum_2piDQT_05;

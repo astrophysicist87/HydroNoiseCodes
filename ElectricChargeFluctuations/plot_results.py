@@ -26,7 +26,9 @@ nDY = 51
 panelLabels = ['(a)', '(b)']
 panelCounter = 0
 
-chosenParticle = 'pion'
+CBFIndices = ['\pi\pi','p \\bar{p}','K K']
+filenames = ['ecf_pion_T0_250MeV.out', 'ecf_proton_T0_250MeV.out', 'ecf_kaon_T0_250MeV.out']
+ExpDataFilenames = ['star_pipi.dat', 'star_ppbar.dat', 'star_KK.dat']
 
 hbarC = 0.197327053
 
@@ -59,28 +61,32 @@ def pause():
 
 #################################################################
 # Plot spectra
-def plotCorrelations(filename):
+def plotCorrelations(index):
 	# set-up
 	plotfontsize = 12
 	fig, ax = plt.subplots(1, 1)
 	fig.subplots_adjust(wspace=0.0, hspace=0.0) 
 	lw = 3.0
+	filename = filenames[index]
 
 	nCols = 2
 	chosenCols = [0, 1, 3, 5, 7]
 
 	# read in file
 	data = loadtxt(filename, usecols=tuple(chosenCols))
+	expdata = loadtxt(ExpDataFilenames[index])
 
 	#print 'Loading data file...'
 	ax.plot(data[:,0], data[:,1], linestyle='-', color='red', linewidth=lw, label='Lattice')
 	ax.plot(data[:,0], data[:,2], linestyle='-', color='blue', linewidth=lw, label=r'$2\pi D_Q T = 0.5$')
 	ax.plot(data[:,0], data[:,3], linestyle='-', color='green', linewidth=lw, label=r'$2\pi D_Q T = 1.0$')
 	ax.plot(data[:,0], data[:,4], linestyle='-', color='purple', linewidth=lw, label=r'$2\pi D_Q T = 1.5$')
+	#ax.plot(expdata[:,0], expdata[:,1], linestyle='None', color='black', marker='s', markersize=5, label='STAR')
+	ax.errorbar(expdata[:,0], expdata[:,1], yerr=expdata[:,2], linestyle='None', color='black', marker='s', markersize=5, label='STAR')
 	ax.axhline(0.0, color='black', linewidth=1)
 	
 	ax.set_xlabel(r'$\Delta y$', fontsize = labelsize + 10)
-	ax.set_ylabel(r'$\left< \delta \left( \frac{dN}{dy_1} \right) \delta \left( \frac{dN}{dy_2} \right) \right> \left< \frac{dN}{dy} \right>^{-1}$', fontsize = labelsize + 10)
+	ax.set_ylabel(r'$B_{%(idx)s}$' % {'idx': CBFIndices[index]}, fontsize = labelsize + 10)
 	ax.legend(loc=0, ncol=1, prop={'size': plotfontsize+5})
 	#text(0.9, 0.15, r'(b)', horizontalalignment='center', verticalalignment='center', transform = ax.transAxes, size=30)
 	#plt.title(pathname)
@@ -96,8 +102,8 @@ def plotCorrelations(filename):
 
 
 def generate_all_plots():
-	plotCorrelations('ecf_pion.out')
-	plotCorrelations('ecf_proton.out')
+	for i in xrange(len(filenames)):
+		plotCorrelations(i)
 	#pause()
 
 
