@@ -33,6 +33,8 @@ inline string return_boolean_string(bool test){return (test ? truestring : false
 extern const double hbarC;
 extern const double Cem;
 
+double fraction_of_evolution;
+
 //bool use_lattice_transport = false;
 
 //double two_pi_DQ_T = 1.0;	//default constant value
@@ -368,6 +370,48 @@ void populate_T_vs_tau()
 	}
 	
 	return;
+}
+
+double compute_newTf(double new_tauf)
+{
+	const gsl_multiroot_fsolver_type *gsl_T;
+	gsl_multiroot_fsolver *gsl_s;
+
+	int status;
+	size_t iter = 0;
+
+	const size_t n = 1;
+	struct rparams p = {new_tauf};
+	gsl_multiroot_function f = {&input_f, n, &p};
+
+	double x_init[n] = {guess_T(new_tauf)};
+	gsl_vector *x = gsl_vector_alloc (n);
+
+	gsl_vector_set (x, 0, x_init[0]);
+
+	gsl_T = gsl_multiroot_fsolver_hybrids;
+	gsl_s = gsl_multiroot_fsolver_alloc (gsl_T, n);
+	gsl_multiroot_fsolver_set (gsl_s, &f, x);
+
+	do
+	{
+		iter++;
+		status = gsl_multiroot_fsolver_iterate (gsl_s);
+
+		if (status)   /* check if solver is stuck */
+			break;
+
+		status = gsl_multiroot_test_residual (gsl_s->f, 1e-7);
+	}
+	while (status == GSL_CONTINUE && iter < 1000);
+
+	//finally, store result
+	double result = gsl_vector_get (gsl_s->x, 0);
+
+	gsl_multiroot_fsolver_free (gsl_s);
+	gsl_vector_free (x);
+	
+	return (result);
 }
 
 // End of file

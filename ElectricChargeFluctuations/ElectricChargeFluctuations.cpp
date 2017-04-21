@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
 	//set parameters corresponding to all different possible trajectories
 	particle_to_study = atoi(argv[1]);
 	Ti = atoi(argv[2]) / hbarC;		//initial trajectory temperature
+	fraction_of_evolution = atof(argv[3]);	//what "snapshot" to take of evolution - 1.0 means the full evolution as usual
 
 	set_phase_diagram_and_EOS_parameters();
 
@@ -86,6 +87,12 @@ int main(int argc, char *argv[])
 
 	sf = s_vs_T(Tf);
 	tauf = si * taui / sf;
+
+	// added this to allow "snapshots" throughout evolution
+	tauf = taui + fraction_of_evolution * (tauf - taui);
+	sf = s_vs_tau(tauf);
+	Tf = compute_newTf(tauf);
+	// rest of code runs the same as before
 
     // initialize other parameters
     ds = 2.0;
