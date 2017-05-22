@@ -30,6 +30,12 @@ string falsestring = "false";
 
 inline string return_boolean_string(bool test){return (test ? truestring : falsestring);}
 
+struct chosen_particle
+{
+	int index;
+	double mass;
+};
+
 extern const double hbarC;
 extern const double Cem;
 
@@ -41,8 +47,7 @@ double fraction_of_evolution;
 
 extern long n_interp;
 
-extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf;
-extern double mByT;
+extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, sf;
 extern double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
 extern double chi_T_T, chi_T_mu, chi_mu_mu;
@@ -54,6 +59,11 @@ extern double * xi_pts_minf_inf, * xi_wts_minf_inf;
 extern double * k_pts, * k_wts;
 extern double * tau_pts, * tau_wts;
 extern double * T_pts;
+
+chosen_particle particle1;
+chosen_particle particle2;
+
+int current_ik = -1;
 
 extern double * interp_T_pts, * interp_transport_pts;
 
@@ -132,9 +142,9 @@ inline void set_phase_diagram_and_EOS_parameters()
 	return;
 }
 
-// functions to guess seed values for T and mu,
+// functions to guess seed value for T,
 // followed by functions to iteratively solve equations
-// for T and mu
+// for T
 
 inline double guess_T(double tau)
 {
@@ -180,25 +190,30 @@ inline double chi_mumu(double T)
 	return ( 4.0 * A2 * T * T );
 }
 
-inline double norm_int(double x)
+inline double norm_int(double x, void * p)
 {
+	struct chosen_particle * params = (struct chosen_particle *)p;
 	double cx = cosh(x);
+	double mByT = (params->mass) / Tf;
 	return (incompleteGamma3(mByT * cx) / (cx*cx));
 }
 
-inline double Fn(double x)
+inline double Fn(double x, void * p)
 {
+	struct chosen_particle * params = (struct chosen_particle *)p;
 	double cx = cosh(x);
 	
 	double c1 = 0.0;
 	double c2 = sf * chi_tilde_T_T;
 
+	double mByT = (params->mass) / Tf;
+
 	return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (cx*cx) );
 }
 
-inline complex<double> Ftilde_n(double k)
+inline complex<double> Ftilde_n(double k, void * p)
 {
-	return (integrate_1D_FT(Fn, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts, k));
+	return (integrate_1D_FT(Fn, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts, k, p));
 }
 
 inline complex<double> Gtilde_n(double k)
@@ -231,8 +246,10 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double), comp
 			double s_loc = s_vs_T(T_loc);
 			double tau3 = tau*tau*tau;
 			double chi_Q = chi_mumu(T_loc);
-			result += 2.0 * tau_wts[it] * two_pi_DQ_T * chi_Q / (s_loc*s_loc*tau3)
+			complex<double> tmp_result = 2.0 * tau_wts[it] * two_pi_DQ_T * chi_Q / (s_loc*s_loc*tau3)
 						* (*Gtilde_X)(k) * (*Gtilde_Y)(-k);
+//if (current_ik==0 && abs(two_pi_DQ_T - 1.0) < 1.e-10) cerr << "CHECK: " << tau << "   " << T_loc << "   " << s_loc << "   " << chi_Q << "   " << tmp_result.real() << endl;
+			result += tmp_result;
 		}
 	}
 

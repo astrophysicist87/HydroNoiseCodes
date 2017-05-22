@@ -21,9 +21,13 @@ double integrate_1D(double (*f)(double), double * xpts, double * xwts, int nx)
     return (sum);
 }
 
-double integrate_1D_with_peak(double (*f)(double, void *), double a, double b, double xc, double width)
+double integrate_1D(double (*f)(double, void *), double * xpts, double * xwts, int nx, void * p)
 {
+    double sum = 0.0;
+    for (int ix = 0; ix < nx; ix++)
+        sum += xwts[ix] * (*f)(xpts[ix], p);
 
+    return (sum);
 }
 
 complex<double> integrate_1D_FT(double (*f)(double), double * xpts, double * xwts, int nx, double k)
@@ -35,6 +39,14 @@ complex<double> integrate_1D_FT(double (*f)(double), double * xpts, double * xwt
     return (sum);
 }
 
+complex<double> integrate_1D_FT(double (*f)(double, void *), double * xpts, double * xwts, int nx, double k, void * p)
+{
+    complex<double> sum = (0,0);
+	for (int ix = 0; ix < nx; ix++)
+		sum += xwts[ix] * exp(- i * k * xpts[ix]) * (*f)(xpts[ix], p);
+
+    return (sum);
+}
 
 double integrate_2D(double (*f)(double, double), double * xpts, double * ypts, double * xwts, double * ywts, int nx, int ny)
 {

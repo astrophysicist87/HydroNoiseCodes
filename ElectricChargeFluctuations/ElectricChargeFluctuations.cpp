@@ -15,7 +15,7 @@ using namespace std;
 #include "defs.h"
 #include "gauss_quadrature.h"
 
-//const int particle_to_study = 2
+//const int particle_to_study
 	// 1 - pion
 	// 2 - proton
 	// 3 - kaon
@@ -23,14 +23,14 @@ int particle_to_study;
 
 const double hbarC = 197.33;
 const double Cem = 2.0 / 3.0;	//my current best guess
-const double k_infinity = 10.0;
-const double xi_infinity = 4.0;
+const double k_infinity = 15.0;
+const double xi_infinity = 10.0;
 const int n_Dy = 51;
 
 long n_interp;
 
-double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf;
-double mByT, alpha0, psi0;
+double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, sf;
+double alpha0, psi0;
 double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, chi_mu_mu, chi_T_mu, chi_T_T, Delta;
 
 double exp_delta, exp_gamma, exp_nu;
@@ -50,28 +50,46 @@ double * interp_T_pts, * interp_transport_pts;
 
 int main(int argc, char *argv[])
 {
-	//set parameters corresponding to all different possible trajectories
-	particle_to_study = atoi(argv[1]);
-	Ti = atoi(argv[2]) / hbarC;		//initial trajectory temperature
-	fraction_of_evolution = atof(argv[3]);	//what "snapshot" to take of evolution - 1.0 means the full evolution as usual
+	//set parameters from command-line input
+	// set particles to study...
+	particle1.index = atoi(argv[1]);
+	particle2.index = atoi(argv[2]);
+	//Ti = atoi(argv[2]) / hbarC;		//initial trajectory temperature
+	Ti = 350.0 / hbarC;
+	//fraction_of_evolution = atof(argv[3]);	//what "snapshot" to take of evolution - 1.0 means the full evolution as usual
+	fraction_of_evolution = 1.0;
 
 	set_phase_diagram_and_EOS_parameters();
 
 	//other constants
-	double Delta_y_step = 0.0;
-	switch (particle_to_study)
+	double Delta_y_step = 0.1;
+
+	switch (particle1.index)
 	{
 		case 1:	//pion
-			m = 139.57 / hbarC;
-			Delta_y_step = 0.1;
+			particle1.mass = 139.57 / hbarC;
 			break;
 		case 2:	//proton
-			m = 939.0 / hbarC;
-			Delta_y_step = 0.05;
+			particle1.mass = 939.0 / hbarC;
 			break;
 		case 3:	//kaon
-			m = 493.68 / hbarC;
-			Delta_y_step = 0.075;
+			particle1.mass = 493.68 / hbarC;
+			break;
+		default:
+			cerr << "Not a supported particle!" << endl;
+			exit(1);
+			break;
+	}
+	switch (particle2.index)
+	{
+		case 1:	//pion
+			particle2.mass = 139.57 / hbarC;
+			break;
+		case 2:	//proton
+			particle2.mass = 939.0 / hbarC;
+			break;
+		case 3:	//kaon
+			particle2.mass = 493.68 / hbarC;
 			break;
 		default:
 			cerr << "Not a supported particle!" << endl;
@@ -96,7 +114,6 @@ int main(int argc, char *argv[])
 
     // initialize other parameters
     ds = 2.0;
-	mByT = m / Tf;
 
 	//set the susceptibilities
 	chi_mu_mu = chi_mumu(Tf);
@@ -139,18 +156,11 @@ int main(int argc, char *argv[])
 	interp_transport_pts = new double [n_interp];
 	read_in_transport_table(n_interp, "transport.dat");
 
-	/*for (int it = 0; it < n_tau_pts; it++)
-	{
-			double T_loc = T_pts[it];
-			double sigma_By_Cem_T = interpolate1D(interp_T_pts, interp_transport_pts, T_loc, n_interp, 0, 1);
-			double result = Cem * T_loc * sigma_By_Cem_T;
-		cout << setprecision(15) << it << "   " << tau_pts[it] << "   " << T_pts[it] << "   " << 0.0 << "   " << result << endl;
-	}
-	if (1) return (0);*/
+	//get the ensemble averaged spectra
+	double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts, &particle1);	//by definition of charge balance function (CBF)
 
-	double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
-
-	vector<complex<double> > Ftn_vec;
+	//vectorize calculations to make them run a little faster
+	vector<complex<double> > Ftn_particle1_vec, Ftn_particle2_vec;
 	vector<complex<double> > Ctnn_lattice_vec;
 	vector<complex<double> > Ctnn_2piDQT_05_vec;
 	vector<complex<double> > Ctnn_2piDQT_10_vec;
@@ -159,13 +169,16 @@ int main(int argc, char *argv[])
 	for (int ik = 0; ik < n_k_pts; ++ik)
 	{
 		double k = k_pts[ik];
-		Ftn_vec.push_back(Ftilde_n(k));
+		current_ik = ik;
+		Ftn_particle1_vec.push_back(Ftilde_n(k, &particle1));
+		Ftn_particle2_vec.push_back(Ftilde_n(k, &particle2));
 		Ctnn_lattice_vec.push_back(Ctilde_n_n(k, true, 0.0));
 		Ctnn_2piDQT_05_vec.push_back(Ctilde_n_n(k, false, 0.5));
 		Ctnn_2piDQT_10_vec.push_back(Ctilde_n_n(k, false, 1.0));
 		Ctnn_2piDQT_15_vec.push_back(Ctilde_n_n(k, false, 1.5));
 	}
 
+	//start computing actual charge balance functions here
 	complex<double> intercept_lattice(0,0), intercept_2piDQT_05(0,0), intercept_2piDQT_10(0,0), intercept_2piDQT_15(0,0);
 	for (int iDy = 0; iDy < n_Dy; iDy++)
 	{
@@ -176,20 +189,21 @@ int main(int argc, char *argv[])
 		{
 			double k = k_pts[ik];
 
-			complex<double> Ftn = Ftn_vec[ik];
+			complex<double> Ftn1 = Ftn_particle1_vec[ik];
+			complex<double> Ftn2 = Ftn_particle2_vec[ik];
 			complex<double> Ctnn_lattice = Ctnn_lattice_vec[ik];
 			complex<double> Ctnn_2piDQT_05 = Ctnn_2piDQT_05_vec[ik];
 			complex<double> Ctnn_2piDQT_10 = Ctnn_2piDQT_10_vec[ik];
 			complex<double> Ctnn_2piDQT_15 = Ctnn_2piDQT_15_vec[ik];
 
 			sum_lattice += k_wts[ik] * exp(i * k * Delta_y)
-					* ( Ftn * conj(Ftn) * Ctnn_lattice );
+					* ( Ftn1 * conj(Ftn2) * Ctnn_lattice );
 			sum_2piDQT_05 += k_wts[ik] * exp(i * k * Delta_y)
-					* ( Ftn * conj(Ftn) * Ctnn_2piDQT_05 );
+					* ( Ftn1 * conj(Ftn2) * Ctnn_2piDQT_05 );
 			sum_2piDQT_10 += k_wts[ik] * exp(i * k * Delta_y)
-					* ( Ftn * conj(Ftn) * Ctnn_2piDQT_10 );
+					* ( Ftn1 * conj(Ftn2) * Ctnn_2piDQT_10 );
 			sum_2piDQT_15 += k_wts[ik] * exp(i * k * Delta_y)
-					* ( Ftn * conj(Ftn) * Ctnn_2piDQT_15 );
+					* ( Ftn1 * conj(Ftn2) * Ctnn_2piDQT_15 );
 		}
 
 		//adjust average value to get true charge balance function

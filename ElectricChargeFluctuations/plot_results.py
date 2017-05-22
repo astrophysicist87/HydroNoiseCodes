@@ -27,8 +27,16 @@ panelLabels = ['(a)', '(b)']
 panelCounter = 0
 
 CBFIndices = ['\pi\pi','p \\bar{p}','K K']
-filenames = ['ecf_pion_T0_250MeV.out', 'ecf_proton_T0_250MeV.out', 'ecf_kaon_T0_250MeV.out']
-ExpDataFilenames = ['star_pipi.dat', 'star_ppbar.dat', 'star_KK.dat']
+#filenames = ['ecf_pion_T0_250MeV.out', 'ecf_proton_T0_250MeV.out', 'ecf_kaon_T0_250MeV.out']
+filenames = ['ecf_protonKaon_T0_350MeV.out']
+#filenames = ['ecf_pion_T0_350MeV.out', 'ecf_proton_T0_350MeV.out', 'ecf_kaon_T0_350MeV.out']
+ExpDataFilenames = ['star_pK.dat']
+#ExpDataFilenames = ['star_pipi.dat', 'star_ppbar.dat', 'star_KK.dat']
+
+#snapshotFractions = ['0.0','0.2','0.4','0.6','0.8','1.0']
+snapshotFractions = ['0.01','0.025','0.1','0.25','0.5','1.0']
+lineColors = ['red', 'blue', 'green', 'purple', 'orange', 'cyan']
+plotTitles = ['Lattice', r'$2\pi D_Q T = 0.5$', r'$2\pi D_Q T = 1.0$', r'$2\pi D_Q T = 1.5$']
 
 hbarC = 0.197327053
 
@@ -60,7 +68,7 @@ def pause():
 	return _nx.concatenate(expanded_arrays, axis=axis)'''
 
 #################################################################
-# Plot spectra
+# Plot correlations
 def plotCorrelations(index):
 	# set-up
 	plotfontsize = 12
@@ -98,12 +106,47 @@ def plotCorrelations(index):
 	print 'Saved to', outfilename
 
 
+#################################################################
+# Plot snapshots
+def plotSnapshots(columnToPlot):
+	# set-up
+	plotfontsize = 12
+	fig, ax = plt.subplots(1, 1)
+	fig.subplots_adjust(wspace=0.0, hspace=0.0) 
+	lw = 3.0
+
+	index = 0
+	nSnapshots = len(snapshotFractions)
+	chosenCols = [0, 1, 3, 5, 7]
+
+	for isnap in xrange(nSnapshots):
+		# read in file
+		filename = 'ecf_pion_snapshot_%(sf)s.out' % {'sf': snapshotFractions[isnap]}
+		data = loadtxt(filename, usecols=tuple(chosenCols))
+
+		#print 'Loading data file...'
+		ax.plot(data[:,0], data[:,columnToPlot+1], linestyle='-', color=lineColors[isnap], linewidth=lw, label=r'$\tau_f = %(sf)s \times \tau_{FO}$' % {'sf': snapshotFractions[isnap]})
+
+	ax.axhline(0.0, color='black', linewidth=1)
+	
+	ax.set_xlabel(r'$\Delta y$', fontsize = labelsize + 10)
+	ax.set_ylabel(r'$B_{%(idx)s}$' % {'idx': CBFIndices[index]}, fontsize = labelsize + 10)
+	ax.legend(loc=0, ncol=2, prop={'size': plotfontsize+5})
+	ax.set_title(plotTitles[columnToPlot],fontsize=plotfontsize+5)
+	
+	#plt.show(block=False)
+	#plt.show()
+	outfilename = 'ecf_pion_snapshots_ParamV' + str(columnToPlot) + '.pdf'
+	plt.savefig(outfilename, format='pdf', bbox_inches='tight')
+	print 'Saved to', outfilename
 
 
 
 def generate_all_plots():
 	for i in xrange(len(filenames)):
 		plotCorrelations(i)
+	#for i in xrange(len(plotTitles)):
+	#	plotSnapshots(i)
 	#pause()
 
 
