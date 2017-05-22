@@ -13,31 +13,20 @@
 using namespace std;
 
 #include "defs.h"
-#include "gauss_quadrature.h"
 
 //bool do_1p_calc = true;
 //bool do_HBT_calc = true;
 bool do_1p_calc;
 bool do_HBT_calc;
 bool scale_out_y_dependence = false;
-bool white_noise, maxwell_cattaneo_noise, gurtin_pipkin_noise;
-int noise_mode = 1;		// 0 - white noise
-						// 1 - Maxwell-Cattaneo noise
-						// 2 - Gurtin-Pipkin noise
-
-const int particle_to_study = 1;	//1 is pion, 2 is proton
+const int particle_to_study = 2;	//1 is pion, 2 is proton
 
 const double hbarC = 197.33;
 const double k_infinity = 10.0;
 const double xi_infinity = 4.0;
-
 const int n_Dy = 1;
 
-double rc = 0.0;
-
-//need these for colored noise expression
-double CN_tau_D, CN_tau_2, CN_v0;
-double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf;
+double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf, s_at_mu_part;
 double mByT, alpha0, psi0;
 double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
@@ -46,7 +35,8 @@ double T0, mu0, Tc, Pc, nc, sc, wc, muc;
 double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD, si, ni;
 double a_at_tauf, vs2_at_tauf, vn2_at_tauf, vsigma2_at_tauf;
 
-int current_ik;
+double screw_it_up_factor, current_kwt, current_DY;
+int current_itau;
 const double mu_pion = 1.e-3 / hbarC;
 double mu_proton, mu_part;
 
@@ -57,15 +47,14 @@ double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
 double * tau_pts_lower, * tau_wts_lower;
+//double * tau_pts_middle, * tau_wts_middle;
 double * tau_pts_upper, * tau_wts_upper;
 double * T_pts, * mu_pts;
 double * T_pts_lower, * mu_pts_lower;
+//double * T_pts_middle, * mu_pts_middle;
 double * T_pts_upper, * mu_pts_upper;
-double * all_tau_pts, * all_tau_wts, * all_T_pts, * all_mu_pts;
-
-double ** Gtilde_s_pts, ** Gtilde_omega_pts, ** Gtilde_n_pts;
-double * tau_integral_factor_pts;
-double ** tau_integral_midpoint_factor_pts;
+double * all_tau_pts, * all_T_pts, * all_mu_pts;
+double * all_tau_wts, * all_T_wts, * all_mu_wts;
 
 int main(int argc, char *argv[])
 {
@@ -73,25 +62,16 @@ int main(int argc, char *argv[])
 	//Ti = 250.0;		//initial trajectory temperature
 	Ti = 250.0 / hbarC;		//initial trajectory temperature
 	double muis[3] = {420.0, 620.0, 820.0};
-	current_ik = 0;
+	double screw_it_up_factors[3] = {0.2, 1.0, 5.0};
+	current_itau = 0;
 
 	int chosen_trajectory = atoi(argv[1]);
 	chosen_trajectory--;		//use for array indexing throughout
 	do_1p_calc = (bool)atoi(argv[2]);
 	do_HBT_calc = (bool)atoi(argv[3]);
-	//rc = atof(argv[4]);
 
-	//set the noise mode and related quantities
-	//white_noise = bool(noise_mode == 0);
-	//maxwell_cattaneo_noise = bool(noise_mode == 1);
-	//gurtin_pipkin_noise = bool(noise_mode == 2);
-	//CN_tau_D = atof(argv[5]);	//fm
-	CN_tau_D = atof(argv[4]);	//fm
-	CN_tau_2 = 0.05;	//fm, not used yet
-	CN_v0 = 0.1;		//dimensionless, not correct value, not used yet
-	white_noise = bool(CN_tau_D < 1.e-6);
-	maxwell_cattaneo_noise = not white_noise;
-	gurtin_pipkin_noise = false;
+	//use this to see why all three trajectories zero at roughly same Delta_y point
+	screw_it_up_factor = screw_it_up_factors[chosen_trajectory];
 
 	mui = muis[chosen_trajectory];
 	mui /= hbarC;
@@ -117,6 +97,7 @@ int main(int argc, char *argv[])
 	mu_proton = muf;
 	mu_part = (particle_to_study == 1) ? mu_pion : mu_proton;
 	//mu_part = muf;
+	s_at_mu_part = s(Tf, mu_part);
 
     // initialize other parameters
     nu = 1.0 / (3.0 * M_PI);
@@ -125,12 +106,12 @@ int main(int argc, char *argv[])
 	mByT = m / Tf;
 
 	//set the susceptibilities
-	double chi_mu_mu = chi_mumu(Tf, muf);
-	double chi_T_mu = chi_Tmu(Tf, muf);
-	double chi_T_T = chi_TT(Tf, muf);
-	//double chi_mu_mu = chi_mumu(Tf, mu_part);
-	//double chi_T_mu = chi_Tmu(Tf, mu_part);
-	//double chi_T_T = chi_TT(Tf, mu_part);
+	//double chi_mu_mu = chi_mumu(Tf, muf);
+	//double chi_T_mu = chi_Tmu(Tf, muf);
+	//double chi_T_T = chi_TT(Tf, muf);
+	double chi_mu_mu = chi_mumu(Tf, mu_part);
+	double chi_T_mu = chi_Tmu(Tf, mu_part);
+	double chi_T_T = chi_TT(Tf, mu_part);
 	Delta = chi_mu_mu * chi_T_T - chi_T_mu * chi_T_mu;
 	chi_tilde_mu_mu = chi_mu_mu / Delta;
 	chi_tilde_T_mu = chi_T_mu / Delta;
@@ -178,44 +159,66 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, tauc, tauf, tau_pts_upper, tau_wts_upper);
 	populate_T_and_mu_vs_tau_part2();
 
-	//set combined tau points to simplify integration
-	all_tau_pts = new double [2*n_tau_pts];
-	all_tau_wts = new double [2*n_tau_pts];
-	all_T_pts = new double [2*n_tau_pts];
-	all_mu_pts = new double [2*n_tau_pts];
-	tau_integral_factor_pts = new double [2*n_tau_pts];
-	tau_integral_midpoint_factor_pts = new double * [2*n_tau_pts];
-	for (int it = 0; it < 2*n_tau_pts; ++it)
-		tau_integral_midpoint_factor_pts[it] = new double [2*n_tau_pts];
-	for (int it = 0; it < n_tau_pts; ++it)
+	for (int it = 0; it < n_tau_pts; it++)
+	{
+		double T_loc = T_pts_lower[it];
+		double mu_loc = mu_pts_lower[it];
+		double arg = n(T_loc, mu_loc)/w(T_loc, mu_loc);
+		double result = Delta_lambda(T_loc, mu_loc)*T_loc*arg*arg;
+		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it] << "   " << result << endl;
+	}
+	for (int it = 0; it < n_tau_pts; it++)
+	{
+		double T_loc = T_pts_upper[it];
+		double mu_loc = mu_pts_upper[it];
+		double arg = n(T_loc, mu_loc)/w(T_loc, mu_loc);
+		double result = Delta_lambda(T_loc, mu_loc)*T_loc*arg*arg;
+		cout << setprecision(15) << it << "   " << tau_pts_upper[it] << "   " << T_pts_upper[it] << "   " << mu_pts_upper[it] << "   " << result << endl;
+	}
+
+	all_tau_pts = new double [2 * n_tau_pts];
+	all_T_pts = new double [2 * n_tau_pts];
+	all_mu_pts = new double [2 * n_tau_pts];
+	all_tau_wts = new double [2 * n_tau_pts];
+	all_T_wts = new double [2 * n_tau_pts];
+	all_mu_wts = new double [2 * n_tau_pts];
+	for (int it = 0; it < n_tau_pts; it++)
 	{
 		all_tau_pts[it] = tau_pts_lower[it];
-		all_tau_wts[it] = tau_wts_lower[it];
-		all_T_pts[it] = T_pts_lower[it];
-		all_mu_pts[it] = mu_pts_lower[it];
-	}
-	for (int it = 0; it < n_tau_pts; ++it)
-	{
 		all_tau_pts[it+n_tau_pts] = tau_pts_upper[it];
-		all_tau_wts[it+n_tau_pts] = tau_wts_upper[it];
+		all_T_pts[it] = T_pts_lower[it];
 		all_T_pts[it+n_tau_pts] = T_pts_upper[it];
+		all_mu_pts[it] = mu_pts_lower[it];
 		all_mu_pts[it+n_tau_pts] = mu_pts_upper[it];
+		all_tau_wts[it] = tau_pts_lower[it];
+		all_tau_wts[it+n_tau_pts] = tau_pts_upper[it];
+		all_T_wts[it] = T_pts_lower[it];
+		all_T_wts[it+n_tau_pts] = T_pts_upper[it];
+		all_mu_wts[it] = mu_pts_lower[it];
+		all_mu_wts[it+n_tau_pts] = mu_pts_upper[it];
 	}
-	set_tau_integral_factor_pts();
-//if (1) return (0);
 
-	//for (int it  = 0; it < n_tau_pts; it++)
-	//	cout << setprecision(15) << it << "   " << tau_pts[it]*1000.0/hbarC << "   " << T_pts[it]*hbarC / 1000.0 << "   " << mu_pts[it]*hbarC / 1000.0 << endl;
+	double * running_integral_array = new double [2*n_tau_pts];
+	set_running_transport_integral(running_integral_array);
 
-	//if (1) return (0);
+	if (1) return (0);
 
-	/*cout << hbarC*Tf << "   " << hbarC*muf << "   " << hbarC*hbarC*hbarC*sf << "   " << chi_tilde_mu_mu/(hbarC*hbarC) << "   " << chi_tilde_T_mu/(hbarC*hbarC) << "   " << chi_tilde_T_T/(hbarC*hbarC) << endl << endl;
+	/*for (int it  = 0; it < n_tau_pts; it++)
+		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it]
+				<< "   " << mu_pts_lower[it]/T_pts_lower[it] << "   " << 1.0-vsigma2(T_pts_lower[it], mu_pts_lower[it]) << endl;
+	for (int it  = 0; it < n_tau_pts; it++)
+		cout << setprecision(15) << it+n_tau_pts << "   " << tau_pts_upper[it] << "   " << T_pts_upper[it] << "   " << mu_pts_upper[it]
+				<< "   " << mu_pts_upper[it]/T_pts_upper[it] << "   " << 1.0-vsigma2(T_pts_upper[it], mu_pts_upper[it]) << endl;*/
 
-	for (int ix = 0; ix < 21; ix++)
+	//cout << tauf << "   " << sPERn << "   " << sc/nc << endl;
+
+	/*for (int ik = 0; ik < n_k_pts; ++ik)
 	{
-		double x = -1.0 + (double)ix * 0.1;
-		cout << x << "   " << Fs(x) << "   " << Fomega(x) << "   " << Fn(x) << endl;
+		double k = k_pts[ik];
+		cout << chosen_trajectory + 1 << "   " << k << "   " << (Ftilde_n(k)*Ftilde_n(-k)).real()
+				<< "   " << Gtilde_n(k, tauf).real() << "   " << Gtilde_n(k, tauf).imag() << "   " << Ctilde_n_n(k).real() << endl;
 	}
+
 	if (1) return (0);*/
 
 	if (do_1p_calc)
@@ -226,13 +229,10 @@ int main(int argc, char *argv[])
 		vector<complex<double> > Fts_vec, Fto_vec, Ftn_vec;
 		vector<complex<double> > Ctss_vec, Ctso_vec, Ctsn_vec, Ctos_vec, Ctoo_vec, Cton_vec, Ctns_vec, Ctno_vec, Ctnn_vec;
 
-		if (gurtin_pipkin_noise)
-			set_noise_integral_points();
-
 		for (int ik = 0; ik < n_k_pts; ++ik)
 		{
 			double k = k_pts[ik];
-			current_ik = ik;
+			current_kwt = k_wts[ik];
 			Fts_vec.push_back(Ftilde_s(k));
 			Fto_vec.push_back(Ftilde_omega(k));
 			Ftn_vec.push_back(Ftilde_n(k));
@@ -250,11 +250,13 @@ int main(int argc, char *argv[])
 		for (int iDy = 0; iDy < n_Dy; iDy++)
 		{
 			double Delta_y = (double)iDy * 0.1;
+			current_DY = Delta_y;
 			complex<double> sum(0,0);
 			complex<double> sum00(0,0), sum01(0,0), sum02(0,0), sum10(0,0), sum11(0,0), sum12(0,0), sum20(0,0), sum21(0,0), sum22(0,0);
 			for (int ik = 0; ik < n_k_pts; ++ik)
 			{
 				double k = k_pts[ik];
+				current_kwt = k_wts[ik];
 				/*complex<double> Fts = Ftilde_s(k);
 				complex<double> Fto = Ftilde_omega(k);
 				complex<double> Ftn = Ftilde_n(k);
@@ -306,7 +308,7 @@ int main(int argc, char *argv[])
 			//cerr << "SUMMARY: " << Delta_y << "   " << sum00.real() << "   " << sum01.real() << "   " << sum02.real() << "   "
 			//		<< sum10.real() << "   " << sum11.real() << "   " << sum12.real() << "   " << sum20.real() << "   "
 			//		<< sum21.real() << "   " << sum22.real() << "   " << sum.real() << "   " << result.real() << endl;
-			cout << setprecision(15) << rc << "   " << chosen_trajectory + 1 << "   " << CN_tau_D << "   " << Delta_y << "   " << result.real() << endl;
+			cout << setprecision(15) << Delta_y << "   " << 1.0*result.real() << endl;
 		}
 	}
 
@@ -319,13 +321,9 @@ int main(int argc, char *argv[])
 		vector<complex<double> > Fbts_vec, Fbto_vec, Fbtn_vec;
 		vector<complex<double> > Ctss_vec, Ctso_vec, Ctsn_vec, Ctos_vec, Ctoo_vec, Cton_vec, Ctns_vec, Ctno_vec, Ctnn_vec;
 
-		if (gurtin_pipkin_noise)
-			set_noise_integral_points();
-
 		for (int ik = 0; ik < n_k_pts; ++ik)
 		{
 			double k = k_pts[ik];
-			current_ik = ik;
 			Fbts_vec.push_back(Fbtilde_s(k));
 			Fbto_vec.push_back(Fbtilde_omega(k));
 			Fbtn_vec.push_back(Fbtilde_n(k));
@@ -342,7 +340,7 @@ int main(int argc, char *argv[])
 
 		for (int iDy = 0; iDy < n_Dy; iDy++)
 		{
-			double Delta_y = (double)iDy * 0.1;
+			double Delta_y = (double)iDy * 0.05;
 			//option #1
 			double y1 = Delta_y;
 			double y2 = 0.0;
@@ -392,16 +390,13 @@ int main(int argc, char *argv[])
 			sum *= pow(tauf, 4.0)/ (cy1*cy1*cy2*cy2);
 
 			double A = 1.0; //fm^2
-			double dNdy = exp(mu_part/Tf)*ds*tauf*A*Tf*Tf*Tf*norm / (4.0*M_PI*M_PI);	//A used to calculate dN/dy, used nowhere else
+			double dNdy = exp(mu_part/Tf)*ds*tauf*A*Tf*Tf*Tf*norm / (4.0*M_PI*M_PI);
 			double mean_R2l_vs_Dy = 0.5*tauf*tauf*psi0 / (cDy*cDy);
 			double mean_R2l_vs_y1 = 0.5*tauf*tauf*psi0 / (cy1*cy1);
 			double mean_R2l_vs_y2 = 0.5*tauf*tauf*psi0 / (cy2*cy2);
-			//factor of A comes "pre-cancelled" in following expressions
 			complex<double> result = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_Dy);
 			complex<double> result2 = (exp(mu_part/Tf)*ds*tauf*Tf*Tf*Tf*norm / (2.0*M_PI*M_PI))*scale_out_y_dep_factor * sum / (mean_R2l_vs_y1*mean_R2l_vs_y2);
-			cout << setprecision(15) << rc << "   " << chosen_trajectory << "   " << CN_tau_D << "   " << Delta_y << "   "
-					<< dNdy << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   "
-					<< result.real() << "   " << result2.real() << endl;
+			cout << Delta_y << "   " << dNdy << "   " << mean_R2l_vs_Dy << "   " << mean_R2l_vs_y1 << "   " << mean_R2l_vs_y2 << "   " << result.real() << "   " << result2.real() << endl;
 		}
 	}
 

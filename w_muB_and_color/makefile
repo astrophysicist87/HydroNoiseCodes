@@ -17,16 +17,19 @@ COMMAND=HNC
 OBJS= $(addsuffix .o, $(basename $(SRCS)))
 
 CC= g++
-#CFLAGS=  -pg
-CFLAGS=
+CFLAGS=  -pg
 WARNFLAGS= -ansi -pedantic -Wall -W \
    -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align \
    -Wwrite-strings -fshort-enums -fno-common 
 LDFLAGS= -lgsl -lgslcblas 
 LIBS= -L/sw/lib -I/sw/include
 
+ 
 $(COMMAND): $(OBJS) $(HDRS) $(MAKEFILE) 
-	$(CC) $(CFLAGS) -o $(COMMAND) $(OBJS) $(LDFLAGS) $(LIBS)
+	$(CC) -o $(COMMAND) $(OBJS) $(LDFLAGS) $(LIBS)
+
+#process_event5.o : process_event5.cpp process_event5.h
+#	$(CC) $(CFLAGS) $(WARNFLAGS) $(LIBS) -c process_event5.cpp -o process_event5.o
 
 clean:
 	rm -f $(OBJS)

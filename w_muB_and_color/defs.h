@@ -15,6 +15,8 @@
 
 using namespace std;
 
+#include "gauss_quadrature.h"
+
 #include "lib.h"
 
 /*USAGE: debugger(__LINE__, __FILE__);*/
@@ -25,21 +27,19 @@ void inline debugger(int cln, const char* cfn)
 }
 
 extern const double hbarC;
-extern double rc;
 
-extern bool white_noise, maxwell_cattaneo_noise, gurtin_pipkin_noise;
-
+int integration_mode = 1;
+bool include_baryon_chemical_potential_fluctations = true;
 extern const double mu_pion;
 extern double mu_part, mu_proton;
+extern double tauC;	//timescale of colored noise
 
-extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf;
+extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf, s_at_mu_part;
 extern double mByT, alpha0, psi0;
 extern double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
-extern int current_ik;
-
-//need these for colored noise expression
-extern double CN_tau_D, CN_tau_2, CN_v0;
+extern double screw_it_up_factor, current_kwt, current_DY;
+extern int current_itau;
 
 extern const int n_xi_pts;
 extern const int n_k_pts;
@@ -52,16 +52,14 @@ extern double * tau_pts_upper, * tau_wts_upper;
 extern double * T_pts, * mu_pts;
 extern double * T_pts_lower, * mu_pts_lower;
 extern double * T_pts_upper, * mu_pts_upper;
-extern double * all_tau_pts, * all_tau_wts, * all_T_pts, * all_mu_pts;
+extern double * all_tau_pts, * all_tau_wts;
+extern double * all_T_pts, * all_T_wts;
+extern double * all_mu_pts, * all_mu_wts;
 
 extern double exp_delta, exp_gamma, exp_nu;
 extern double T0, mu0, Tc, Pc, nc, sc, wc, muc;
 extern double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD, si, ni;
 extern double a_at_tauf, vs2_at_tauf, vn2_at_tauf, vsigma2_at_tauf;
-
-double *** noise_integral_points;
-extern double * tau_integral_factor_pts;
-extern double ** tau_integral_midpoint_factor_pts;
 
 //general functions
 inline double Omega(double x)
@@ -86,44 +84,6 @@ inline double incompleteGamma5(double x)
 	return (exp(-x)*(24.+x*(24.+x*(12.+x*(4.+x)))));
 }
 
-inline double GP_noise_integrand(double tA, double tB, double k, double delxi)
-{
-	return (
-			exp( ( tA - tB*cosh(delxi) ) / CN_tau_D) * cos(k*delxi)
-			);
-}
-
-void set_noise_integral_points()
-{
-	//needs to be checked (derivation-wise; e.g., true for tA>tB)?
-	noise_integral_points = new double ** [n_tau_pts];
-	for (int it = 0; it < n_tau_pts; ++it)
-	{
-		double tA = tau_pts[it];
-		noise_integral_points[it] = new double * [n_tau_pts];
-		for (int itp = 0; itp < n_tau_pts; ++itp)
-		{
-			double tB = tau_pts[itp];
-			double n1 = CN_v0 * tA;
-			double n2 = sqrt(tB*tB + CN_v0*CN_v0*(tA*tA-tB*tB));
-			double a = log( (n1 + n2) / (tB*(1.0 + CN_v0)) );	//del_xi_minus
-			double b = log( (n1 - n2) / (tB*(-1.0 + CN_v0)) );	//del_xi_plus
-			noise_integral_points[it][itp] = new double [n_k_pts];
-			for (int ik = 0; ik < n_k_pts; ++ik)
-			{
-				double k = k_pts[ik];
-				noise_integral_points[it][itp][ik] = 0.125*(b-a)*(
-													GP_noise_integrand(tA, tB, k, a)
-													+ 3.0*GP_noise_integrand(tA, tB, k, (2.0*a+b)/3.0)
-													+ 3.0*GP_noise_integrand(tA, tB, k, (a+2.0*b)/3.0)
-													+ GP_noise_integrand(tA, tB, k, b)
-													);	//simpson's 3/8 rule - works really well
-			}
-		}
-	}
-	return;
-}
-
 //equation of state and other thermodynamic relations
 inline double P(double T, double mu)
 {
@@ -135,10 +95,10 @@ inline double P(double T, double mu)
 inline void set_phase_diagram_and_EOS_parameters()
 {
 	Nf = 2.0;											//number of massless flavors
-	//T0 = 170.0;										//phase transition curve, T scale
-	//mu0 = 1218.48;									//phase transition curve, mu scale
-	T0 = 170.0 / hbarC;									//phase transition curve, T scale
-	mu0 = 1218.48 / hbarC;								//phase transition curve, mu scale
+	//T0 = 170.0;											//phase transition curve, T scale
+	//mu0 = 1218.48;										//phase transition curve, mu scale
+	T0 = 170.0 / hbarC;											//phase transition curve, T scale
+	mu0 = 1218.48 / hbarC;										//phase transition curve, mu scale
 	A4 = M_PI*M_PI*(16.0 + 10.5*Nf) / 90.0;				//coeff in P(T,mu) (i.e., EOS)
 	A2 = Nf / 18.0;										//same
 	A0 = Nf / (324.0 * M_PI * M_PI);					//same
@@ -299,6 +259,7 @@ inline double vn2(double T, double mu)
 {
 	return (
 		(1.0/3.0) - ( 2.0*C0*( A2*T*T + 6.0*A0*mu*mu ) ) / ( 9.0*d(T, mu) )
+		//screw_it_up_factor * ( (1.0/3.0) - ( 2.0*C0*( A2*T*T + 6.0*A0*mu*mu ) ) / ( 9.0*d(T, mu) ) )
 	);
 }
 
@@ -306,6 +267,7 @@ inline double vs2(double T, double mu)
 {
 	return (
 		(1.0/3.0) + ( ( 4.0*A2*C0*T*T ) / ( 9.0*d(T, mu) ) )
+		//screw_it_up_factor * ( (1.0/3.0) + ( ( 4.0*A2*C0*T*T ) / ( 9.0*d(T, mu) ) ) )
 	);
 }
 
@@ -359,8 +321,9 @@ inline double Fs(double x)
 {
 	double cx = cosh(x);
 	
-	double c1 = sf * chi_tilde_mu_mu;
-	double c2 = -sf * (chi_tilde_T_mu + chi_tilde_mu_mu * mu_part / Tf);
+	double c1 = s_at_mu_part * chi_tilde_mu_mu;
+	//double c2 = -sf * (chi_tilde_T_mu + chi_tilde_mu_mu * muf / Tf);
+	double c2 = -s_at_mu_part * double(include_baryon_chemical_potential_fluctations) * (chi_tilde_T_mu + chi_tilde_mu_mu * mu_part / Tf);
 
 	return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (cx*cx) );
 }
@@ -369,6 +332,7 @@ inline double Fomega(double x)
 {
 	double cx = cosh(x);
 	
+	//return (Tf * tanh(x)*incompleteGamma4(mByT * cx) / (hbarC*cx*cx));
 	return (Tf * tanh(x)*incompleteGamma4(mByT * cx) / (cx*cx));
 }
 
@@ -376,8 +340,9 @@ inline double Fn(double x)
 {
 	double cx = cosh(x);
 	
-	double c1 = -sf * chi_tilde_T_mu;
-	double c2 = sf * (chi_tilde_T_T + chi_tilde_T_mu * mu_part / Tf);
+	double c1 = -s_at_mu_part * chi_tilde_T_mu;
+	//double c2 = sf * (chi_tilde_T_T + chi_tilde_T_mu * muf / Tf);
+	double c2 = s_at_mu_part * double(include_baryon_chemical_potential_fluctations) * (chi_tilde_T_T + chi_tilde_T_mu * mu_part / Tf);
 
 	return ( (c1 * incompleteGamma4(mByT * cx) + c2 * incompleteGamma3(mByT * cx) ) / (cx*cx) );
 }
@@ -401,7 +366,6 @@ inline complex<double> Gtilde_s(double k, double t_p)
 {
 	double T_loc = Tf;		//second argument always evaluated at t = tau_f
 	double mu_loc = muf;	//second argument always evaluated at t = tau_f
-	//double mu_loc = mu_part;	//second argument always evaluated at t = tau_f
 	complex<double> b = beta(k);
 	double t_by_tp = tauf / t_p;
 	double f0 = vs2_at_tauf;
@@ -417,7 +381,6 @@ inline complex<double> Gtilde_omega(double k, double t_p)
 {
 	double T_loc = Tf;		//second argument always evaluated at t = tau_f
 	double mu_loc = muf;	//second argument always evaluated at t = tau_f
-	//double mu_loc = mu_part;	//second argument always evaluated at t = tau_f
 	double t_by_tp = tauf / t_p;
 	complex<double> b = beta(k);
 	
@@ -430,116 +393,127 @@ inline complex<double> Gtilde_n(double k, double t_p)
 {
 	double T_loc = Tf;		//second argument always evaluated at t = tau_f
 	double mu_loc = muf;	//second argument always evaluated at t = tau_f
-	//double mu_loc = mu_part;	//second argument always evaluated at t = tau_f
 	complex<double> b = beta(k);
 	double t_by_tp = tauf / t_p;
 	double f0 = vn2_at_tauf;
 	double pref = (vsigma2_at_tauf-vn2_at_tauf)*pow(t_by_tp, -a_at_tauf);
 	complex<double> f1 = (a_at_tauf/b)*sinh(b*log(t_by_tp)) + cosh(b*log(t_by_tp));
 
+	/*if (current_itau == 45)
+		cout << current_DY << "   " << k << "   " << current_kwt << "   " << t_p << "   " << tauf << "   " << T_loc << "   "
+				<< mu_loc << "   " << a_at_tauf << "   " << b.real() << "   " << b.imag() << "   " << f0 << "  " << pref << "   "
+				<< vsigma2_at_tauf << "   " << vn2_at_tauf << "   "
+				<< ((a_at_tauf/b)*sinh(b*log(t_by_tp))).real() << "   " << ((a_at_tauf/b)*sinh(b*log(t_by_tp))).imag() << "   "
+				<< cosh(b*log(t_by_tp)).real() << "   " << cosh(b*log(t_by_tp)).imag() << "   "
+				<< k / vsigma2_at_tauf << endl;*/
+
 	return (
+		//(i * k / vsigma2_at_tauf ) * (f0 + pref*f1)	 / (1.0 + screw_it_up_factor * k*k)		//dimensionless
 		(i * k / vsigma2_at_tauf ) * (f0 + pref*f1)		//dimensionless
 	);
-}
-
-inline void set_tau_integral_factor_pts()
-{
-	//ofstream out("all_T_mu_v_tau.dat");
-	for (int it = 0; it < 2*n_tau_pts; ++it)
-	{
-		double t_loc = all_tau_pts[it];
-		double T_loc = all_T_pts[it];
-		double mu_loc = all_mu_pts[it];
-		//out << t_loc << "   " << T_loc << "   " << mu_loc << endl;
-		double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-		tau_integral_factor_pts[it] = Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0);
-	}
-	//out.close();
-	//ofstream out2("all_T_mu_v_taubar.dat");
-	for (int it = 0; it < 2*n_tau_pts; ++it)
-	for (int itp = 0; itp < 2*n_tau_pts; ++itp)
-	{
-		double tA = all_tau_pts[it];
-		double tB = all_tau_pts[itp];
-		double tbar = 0.5 * ( tA + tB );
-		double T_loc = interpolate1D(tau_pts, T_pts, tbar, n_tau_pts, 0, false, true);
-		double mu_loc = interpolate1D(tau_pts, mu_pts, tbar, n_tau_pts, 0, false, true);
-		//out2 << tbar << "   " << T_loc << "   " << mu_loc << endl;
-		double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-		tau_integral_midpoint_factor_pts[it][itp] = Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0);
-	}
-	//out2.close();
-
-	return;
 }
 
 inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, double), complex<double> (*Gtilde_Y)(double, double), double k)
 {
 	complex<double> locsum(0,0);
-	complex<double> Gtilde_X_pts[2*n_tau_pts];
-	complex<double> Gtilde_Y_pts[2*n_tau_pts];
-	for (int it = 0; it < 2*n_tau_pts; ++it)
+	if (integration_mode == 1)
 	{
-		double t_loc = all_tau_pts[it];
-		Gtilde_X_pts[it] = (*Gtilde_X)(k, t_loc);
-		Gtilde_Y_pts[it] = (*Gtilde_Y)(-k, t_loc);
+		//lower section
+		for (int it = 0; it < n_tau_pts; ++it)
+		{
+			double t_loc = tau_pts_lower[it];
+			double T_loc = T_pts_lower[it];
+			double mu_loc = mu_pts_lower[it];
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			locsum += tau_wts_lower[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
+					* (*Gtilde_X)(k, t_loc) * (*Gtilde_Y)(-k, t_loc);
+		}
+		//upper section
+		for (int it = 0; it < n_tau_pts; ++it)
+		{
+			double t_loc = tau_pts_upper[it];
+			double T_loc = T_pts_upper[it];
+			double mu_loc = mu_pts_upper[it];
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			locsum += tau_wts_upper[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
+					* (*Gtilde_X)(k, t_loc) * (*Gtilde_Y)(-k, t_loc);
+		}
+	}
+	else
+	{
+		//both sections together
+		for (int it = 0; it < n_tau_pts; ++it)
+		{
+			double t_loc = tau_pts[it];
+			double T_loc = T_pts[it];
+			double mu_loc = mu_pts[it];
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			locsum += tau_wts[it] * pow(t_loc, -3.0) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0)
+					* (*Gtilde_X)(k, t_loc) * (*Gtilde_Y)(-k, t_loc);
+		}
 	}
 
-	if (white_noise)
+	return (locsum);
+}
+
+inline void set_running_transport_integral(double * running_integral_array)
+{
+	const int n_x_pts = 5;
+	double * x_pts = new double [n_x_pts];	//more than enough
+	double * x_wts = new double [n_x_pts];	//more than enough
+	gauss_quadrature(n_x_pts, 1, 0.0, 0.0, -1.0, 1.0, x_pts, x_wts);
+
+	running_integral_array[0] = 0.0;
+	for (int it = 0; it < 2*n_tau_pts-1; ++it)
 	{
-		for (int it = 0; it < 2*n_tau_pts; ++it)
+		double sum = 0.0;
+		double t0 = tau_pts[it], t1 = tau_pts[it+1];
+		double cen = 0.5*(t0+t1);
+		double hw = 0.5*(t1-t0);
+		for (int ix = 0; ix < n_x_pts; ++ix)
 		{
-			double t_loc = all_tau_pts[it];
-			double T_loc = all_T_pts[it];
-			double mu_loc = all_mu_pts[it];
-			locsum += all_tau_wts[it] * pow(t_loc, -3.0) * tau_integral_factor_pts[it]
-					* Gtilde_X_pts[it] * Gtilde_Y_pts[it];
+			double t_loc = cen + hw * x_pts[ix];
+			double T_loc = interpolate1D(all_tau_pts, all_T_pts, t_loc, 2*n_tau_pts, 0, true);
+			double mu_loc = interpolate1D(all_tau_pts, all_mu_pts, t_loc, 2*n_tau_pts, 0, true);
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += x_wts[ix] * exp(t_loc / tauC) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0) / t_loc;
 		}
+		running_integral_array[it+1] = running_integral_array[it] + sum;
 	}
-	else if (maxwell_cattaneo_noise)
+
+	delete [] x_pts;
+	delete [] x_wts;
+
+	return;
+}
+
+inline complex<double> colored_tau_integration(complex<double> (*Gtilde_X)(double, double), complex<double> (*Gtilde_Y)(double, double), double k)
+{
+	complex<double> locsum(0,0);
+
+	for (int itp = 0; itp < 2*n_tau_pts; ++itp)
 	{
-		for (int it = 0; it < 2*n_tau_pts; ++it)
-		for (int itp = 0; itp < 2*n_tau_pts; ++itp)
+		double tX_loc = all_tau_pts[itp];
+		double TX_loc = all_T_pts[itp];
+		double muX_loc = all_mu_pts[itp];
+		complex<double> factor_X = (*Gtilde_X)(k, tX_loc) / tX_loc;
+
+		complex<double> sum_X = 0.0;
+		for (int itpp = 0; itpp < 2*n_tau_pts; ++itpp)
 		{
-			double tA = all_tau_pts[it];
-			double tB = all_tau_pts[itp];
-			double TA = all_T_pts[it];
-			double muA = all_mu_pts[it];
-			double TB = all_T_pts[itp];
-			double muB = all_mu_pts[itp];
-//
-			double tbar = tA;
-//			double tbar = tB;
-//			double tbar = 0.5*(tA+tB);
-			double f = 0.5 * exp(-abs(tA - tB) / CN_tau_D) / CN_tau_D;
-			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_factor_pts[it]	//evaluates thermal conductivity at point A
-					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar);
-//			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_factor_pts[itp]	//evaluates thermal conductivity at point B
-//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar);
-//			locsum += all_tau_wts[it] * all_tau_wts[itp] * tau_integral_midpoint_factor_pts[it][itp]
-//					* f * Gtilde_X_pts[it] * Gtilde_Y_pts[itp] / (tA*tB*tbar);
+			double tY_loc = all_tau_pts[itpp];
+			double TY_loc = all_T_pts[itpp];
+			double muY_loc = all_mu_pts[itpp];
+			complex<double> factor_Y = (*Gtilde_Y)(-k, tY_loc) / tY_loc;
+
+			double min_tp_tpp = min(tX_loc, tY_loc);
+			int min_itp_itpp = min(itp, itpp);
+
+			double sum_XY = exp(-(abs(tX_loc - tY_loc) + min_tp_tpp) / tauC) * running_integral_array[min_itp_itpp] / (2.0*tauC);
+			sum_X += all_tau_wts[itpp] * factor_Y * sum_XY;
 		}
+		locsum += all_tau_pts[itp] * factor_X * sum_X;
 	}
-	/*else if (gurtin_pipkin_noise)
-	{
-		for (int it = 0; it < n_tau_pts; ++it)
-		for (int itp = 0; itp < n_tau_pts; ++itp)
-		{
-			double tA = tau_pts[it];
-			double TA = T_pts[it];
-			double muA = mu_pts[it];
-			double tB = tau_pts[itp];
-			double TB = T_pts[itp];
-			double muB = mu_pts[itp];
-			double tbar = tA;	//generalize later to see how sensitive results are
-			double Tbar = TA;	//generalize later to see how sensitive results are
-			double mubar = muA;	//generalize later to see how sensitive results are
-			double arg = n(TA, muA)*TA / ( s(TA, muA)*w(TA, muA) );
-			double f = noise_integral_points[it][itp][current_ik];
-			sum += 0.5 * tau_wts[it] * tau_wts[itp] * Delta_lambda(TA, muA) * pow(arg, 2.0)	//factor of 0.5 reflects different coefficient in front of colored noise
-					* f * Gtilde_s(k, t_loc) * Gtilde_s(-k, t_loc) / (tA*tB*tbar);
-		}
-	}*/
 
 	return (locsum);
 }
@@ -641,28 +615,26 @@ inline double f2(double x1, double x2)
 {
 	double z = zeta(x1, x2);																//MeV^1	
 	double term1 = chi_tilde_mu_mu * cosh(x1) * pow(z, 5.0) * incompleteGamma5(m / z);		//MeV^3
-	//double term2 = (chi_tilde_mu_mu * muf + chi_tilde_T_mu * Tf)
-	//				* pow(z, 4.0) * incompleteGamma4(m / z);								//MeV^3
-	double term2 = (chi_tilde_mu_mu * mu_part + chi_tilde_T_mu * Tf)
+	double term2 =  double(include_baryon_chemical_potential_fluctations)
+					* (chi_tilde_mu_mu * mu_part + chi_tilde_T_mu * Tf)
 					* pow(z, 4.0) * incompleteGamma4(m / z);								//MeV^3
-	return (sf * (term1 - term2) / (Tf*Tf));												//MeV^4
+	return (s_at_mu_part * (term1 - term2) / (Tf*Tf));												//MeV^4
 }
 
 inline double f3(double x1, double x2)
 {
-	double z = zeta(x1, x2);										//MeV^0
+	double z = zeta(x1, x2);										//MeV^1
 	return ( sinh(x1)*pow(z, 5.0)*incompleteGamma5(m / z) / Tf );	//MeV^4
 }
 
 inline double f4(double x1, double x2)
 {
 	double z = zeta(x1, x2);																//MeV^1
-	//double term1 = (chi_tilde_T_mu*muf + chi_tilde_T_T*Tf)
-	//					* pow(z, 4.0) * incompleteGamma4(m / z);							//MeV^3
-	double term1 = (chi_tilde_T_mu*mu_part + chi_tilde_T_T*Tf)
+	double term1 = double(include_baryon_chemical_potential_fluctations)
+					* (chi_tilde_T_mu*mu_part + chi_tilde_T_T*Tf)
 						* pow(z, 4.0) * incompleteGamma4(m / z);							//MeV^3
 	double term2 = chi_tilde_T_mu * cosh(x1) * pow(z, 5.0) * incompleteGamma5(m / z);		//MeV^3
-	return (sf * (term1 - term2)/(Tf*Tf));													//MeV^4
+	return (s_at_mu_part * (term1 - term2)/(Tf*Tf));													//MeV^4
 }
 
 inline double get_alpha0()
@@ -1012,24 +984,17 @@ void break_up_integral(int nt, double &max_DL, double &tauc, double &width)
 	vector<double> Delta_lambda_vec;
 	vector<double> tpts;
 
-	/*ofstream out("T_mu_v_tau_ORIGINAL.dat");
-	for (int it = 0; it < n_tau_pts; ++it)
-		out << tau_pts[it] << "   " << T_pts[it] << "   " << mu_pts[it] << endl;
-	out.close();*/
-
 	//check Delta_lambda
-	//ofstream out2("T_mu_v_tau_SUPERDENSE.dat");
 	for (int it = 1; it < nt; ++it)
 	{
 		double t_loc = taui + 0.5 + (double)it * Delta_t;
-		double T_loc = interpolate1D(tau_pts, T_pts, t_loc, n_tau_pts, 0, false);
-		double mu_loc = interpolate1D(tau_pts, mu_pts, t_loc, n_tau_pts, 0, false);
+		double T_loc = interpolate1D(tau_pts, T_pts, t_loc, n_tau_pts, 1, false);
+		double mu_loc = interpolate1D(tau_pts, mu_pts, t_loc, n_tau_pts, 1, false);
 		double DL = Delta_lambda(T_loc, mu_loc);
 		Delta_lambda_vec.push_back(DL);
 		tpts.push_back(t_loc);
-		//out2 << t_loc << "   " << T_loc << "   " << mu_loc << endl;
+		//cout << t_loc << "   " << DL << endl;
 	}
-	//out2.close();
 	std::vector<double>::iterator result = std::max_element(Delta_lambda_vec.begin(), Delta_lambda_vec.end());
     int idx = std::distance(Delta_lambda_vec.begin(), result);
 	max_DL = Delta_lambda_vec[idx];
