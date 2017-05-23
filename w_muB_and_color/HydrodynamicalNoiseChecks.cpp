@@ -20,6 +20,7 @@ bool do_1p_calc;
 bool do_HBT_calc;
 bool scale_out_y_dependence = false;
 const int particle_to_study = 2;	//1 is pion, 2 is proton
+const double tauC = 1.0;	//fm/c
 
 const double hbarC = 197.33;
 const double k_infinity = 10.0;
@@ -35,7 +36,7 @@ double T0, mu0, Tc, Pc, nc, sc, wc, muc;
 double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD, si, ni;
 double a_at_tauf, vs2_at_tauf, vn2_at_tauf, vsigma2_at_tauf;
 
-double screw_it_up_factor, current_kwt, current_DY;
+double current_kwt, current_DY;
 int current_itau;
 const double mu_pion = 1.e-3 / hbarC;
 double mu_proton, mu_part;
@@ -47,14 +48,13 @@ double * xi_pts_minf_inf, * xi_wts_minf_inf;
 double * k_pts, * k_wts;
 double * tau_pts, * tau_wts;
 double * tau_pts_lower, * tau_wts_lower;
-//double * tau_pts_middle, * tau_wts_middle;
 double * tau_pts_upper, * tau_wts_upper;
 double * T_pts, * mu_pts;
 double * T_pts_lower, * mu_pts_lower;
-//double * T_pts_middle, * mu_pts_middle;
 double * T_pts_upper, * mu_pts_upper;
 double * all_tau_pts, * all_T_pts, * all_mu_pts;
 double * all_tau_wts, * all_T_wts, * all_mu_wts;
+double * running_integral_array;
 
 int main(int argc, char *argv[])
 {
@@ -62,16 +62,12 @@ int main(int argc, char *argv[])
 	//Ti = 250.0;		//initial trajectory temperature
 	Ti = 250.0 / hbarC;		//initial trajectory temperature
 	double muis[3] = {420.0, 620.0, 820.0};
-	double screw_it_up_factors[3] = {0.2, 1.0, 5.0};
 	current_itau = 0;
 
 	int chosen_trajectory = atoi(argv[1]);
 	chosen_trajectory--;		//use for array indexing throughout
 	do_1p_calc = (bool)atoi(argv[2]);
 	do_HBT_calc = (bool)atoi(argv[3]);
-
-	//use this to see why all three trajectories zero at roughly same Delta_y point
-	screw_it_up_factor = screw_it_up_factors[chosen_trajectory];
 
 	mui = muis[chosen_trajectory];
 	mui /= hbarC;
@@ -106,9 +102,6 @@ int main(int argc, char *argv[])
 	mByT = m / Tf;
 
 	//set the susceptibilities
-	//double chi_mu_mu = chi_mumu(Tf, muf);
-	//double chi_T_mu = chi_Tmu(Tf, muf);
-	//double chi_T_T = chi_TT(Tf, muf);
 	double chi_mu_mu = chi_mumu(Tf, mu_part);
 	double chi_T_mu = chi_Tmu(Tf, mu_part);
 	double chi_T_T = chi_TT(Tf, mu_part);
@@ -159,23 +152,6 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, tauc, tauf, tau_pts_upper, tau_wts_upper);
 	populate_T_and_mu_vs_tau_part2();
 
-	for (int it = 0; it < n_tau_pts; it++)
-	{
-		double T_loc = T_pts_lower[it];
-		double mu_loc = mu_pts_lower[it];
-		double arg = n(T_loc, mu_loc)/w(T_loc, mu_loc);
-		double result = Delta_lambda(T_loc, mu_loc)*T_loc*arg*arg;
-		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it] << "   " << result << endl;
-	}
-	for (int it = 0; it < n_tau_pts; it++)
-	{
-		double T_loc = T_pts_upper[it];
-		double mu_loc = mu_pts_upper[it];
-		double arg = n(T_loc, mu_loc)/w(T_loc, mu_loc);
-		double result = Delta_lambda(T_loc, mu_loc)*T_loc*arg*arg;
-		cout << setprecision(15) << it << "   " << tau_pts_upper[it] << "   " << T_pts_upper[it] << "   " << mu_pts_upper[it] << "   " << result << endl;
-	}
-
 	all_tau_pts = new double [2 * n_tau_pts];
 	all_T_pts = new double [2 * n_tau_pts];
 	all_mu_pts = new double [2 * n_tau_pts];
@@ -198,10 +174,13 @@ int main(int argc, char *argv[])
 		all_mu_wts[it+n_tau_pts] = mu_pts_upper[it];
 	}
 
-	double * running_integral_array = new double [2*n_tau_pts];
+	running_integral_array = new double [2*n_tau_pts];
 	set_running_transport_integral(running_integral_array);
 
-	if (1) return (0);
+	//for (int it = 0; it < 2*n_tau_pts; it++)
+	//	cout << all_tau_pts[it] << "   " << running_integral_array[it] << endl;
+
+	//if (1) return (0);
 
 	/*for (int it  = 0; it < n_tau_pts; it++)
 		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it]

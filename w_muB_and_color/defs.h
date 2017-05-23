@@ -32,7 +32,7 @@ int integration_mode = 1;
 bool include_baryon_chemical_potential_fluctations = true;
 extern const double mu_pion;
 extern double mu_part, mu_proton;
-extern double tauC;	//timescale of colored noise
+extern const double tauC;	//timescale of colored noise
 
 extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf, s_at_mu_part;
 extern double mByT, alpha0, psi0;
@@ -55,6 +55,7 @@ extern double * T_pts_upper, * mu_pts_upper;
 extern double * all_tau_pts, * all_tau_wts;
 extern double * all_T_pts, * all_T_wts;
 extern double * all_mu_pts, * all_mu_wts;
+extern double * running_integral_array;
 
 extern double exp_delta, exp_gamma, exp_nu;
 extern double T0, mu0, Tc, Pc, nc, sc, wc, muc;
@@ -399,16 +400,7 @@ inline complex<double> Gtilde_n(double k, double t_p)
 	double pref = (vsigma2_at_tauf-vn2_at_tauf)*pow(t_by_tp, -a_at_tauf);
 	complex<double> f1 = (a_at_tauf/b)*sinh(b*log(t_by_tp)) + cosh(b*log(t_by_tp));
 
-	/*if (current_itau == 45)
-		cout << current_DY << "   " << k << "   " << current_kwt << "   " << t_p << "   " << tauf << "   " << T_loc << "   "
-				<< mu_loc << "   " << a_at_tauf << "   " << b.real() << "   " << b.imag() << "   " << f0 << "  " << pref << "   "
-				<< vsigma2_at_tauf << "   " << vn2_at_tauf << "   "
-				<< ((a_at_tauf/b)*sinh(b*log(t_by_tp))).real() << "   " << ((a_at_tauf/b)*sinh(b*log(t_by_tp))).imag() << "   "
-				<< cosh(b*log(t_by_tp)).real() << "   " << cosh(b*log(t_by_tp)).imag() << "   "
-				<< k / vsigma2_at_tauf << endl;*/
-
 	return (
-		//(i * k / vsigma2_at_tauf ) * (f0 + pref*f1)	 / (1.0 + screw_it_up_factor * k*k)		//dimensionless
 		(i * k / vsigma2_at_tauf ) * (f0 + pref*f1)		//dimensionless
 	);
 }
@@ -458,27 +450,28 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double, doubl
 
 inline void set_running_transport_integral(double * running_integral_array)
 {
-	const int n_x_pts = 5;
-	double * x_pts = new double [n_x_pts];	//more than enough
-	double * x_wts = new double [n_x_pts];	//more than enough
+	const int n_x_pts = 11;
+	double * x_pts = new double [n_x_pts];
+	double * x_wts = new double [n_x_pts];
 	gauss_quadrature(n_x_pts, 1, 0.0, 0.0, -1.0, 1.0, x_pts, x_wts);
 
 	running_integral_array[0] = 0.0;
 	for (int it = 0; it < 2*n_tau_pts-1; ++it)
 	{
 		double sum = 0.0;
-		double t0 = tau_pts[it], t1 = tau_pts[it+1];
+		double t0 = all_tau_pts[it], t1 = all_tau_pts[it+1];
 		double cen = 0.5*(t0+t1);
 		double hw = 0.5*(t1-t0);
 		for (int ix = 0; ix < n_x_pts; ++ix)
 		{
 			double t_loc = cen + hw * x_pts[ix];
-			double T_loc = interpolate1D(all_tau_pts, all_T_pts, t_loc, 2*n_tau_pts, 0, true);
-			double mu_loc = interpolate1D(all_tau_pts, all_mu_pts, t_loc, 2*n_tau_pts, 0, true);
+			double T_loc = interpolate1D(all_tau_pts, all_T_pts, t_loc, 2*n_tau_pts, 0, false);
+			double mu_loc = interpolate1D(all_tau_pts, all_mu_pts, t_loc, 2*n_tau_pts, 0, false);
 			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
-			sum += x_wts[ix] * exp(t_loc / tauC) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0) / t_loc;
+			sum += x_wts[ix] * hw * exp(t_loc / tauC) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0) / t_loc;
+			//sum += x_wts[ix] * hw * exp(t_loc / tauC);	//use this line to check that integration works correctly
 		}
-		running_integral_array[it+1] = running_integral_array[it] + sum;
+		running_integral_array[it+1] = exp(-t1 / tauC) * ( exp(t0 / tauC) * running_integral_array[it] + sum );
 	}
 
 	delete [] x_pts;
@@ -506,13 +499,13 @@ inline complex<double> colored_tau_integration(complex<double> (*Gtilde_X)(doubl
 			double muY_loc = all_mu_pts[itpp];
 			complex<double> factor_Y = (*Gtilde_Y)(-k, tY_loc) / tY_loc;
 
-			double min_tp_tpp = min(tX_loc, tY_loc);
+			//double min_tp_tpp = min(tX_loc, tY_loc);
 			int min_itp_itpp = min(itp, itpp);
 
-			double sum_XY = exp(-(abs(tX_loc - tY_loc) + min_tp_tpp) / tauC) * running_integral_array[min_itp_itpp] / (2.0*tauC);
+			double sum_XY = exp(-abs(tX_loc - tY_loc) / tauC) * running_integral_array[min_itp_itpp] / (2.0*tauC);
 			sum_X += all_tau_wts[itpp] * factor_Y * sum_XY;
 		}
-		locsum += all_tau_pts[itp] * factor_X * sum_X;
+		locsum += all_tau_wts[itp] * factor_X * sum_X;
 	}
 
 	return (locsum);
