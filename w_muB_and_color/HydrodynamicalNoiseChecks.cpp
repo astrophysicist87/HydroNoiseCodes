@@ -20,7 +20,7 @@ bool do_1p_calc;
 bool do_HBT_calc;
 bool scale_out_y_dependence = false;
 const int particle_to_study = 2;	//1 is pion, 2 is proton
-const double tauC = 1.0;	//fm/c
+const double tauC = 0.005;	//fm/c
 
 const double hbarC = 197.33;
 const double k_infinity = 10.0;
@@ -37,7 +37,7 @@ double A0, A2, A4, C0, B, mui, muf, xi0, xibar0, etaBYs, RD, sPERn, Nf, qD, si, 
 double a_at_tauf, vs2_at_tauf, vn2_at_tauf, vsigma2_at_tauf;
 
 double current_kwt, current_DY;
-int current_itau;
+int current_itau, current_ik;
 const double mu_pion = 1.e-3 / hbarC;
 double mu_proton, mu_part;
 
@@ -132,9 +132,6 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_k_pts, 1, 0.0, 0.0, -k_infinity, k_infinity, k_pts, k_wts);
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, taui, tauf, tau_pts, tau_wts);
 
-//cout << setprecision(15) << taui << "   " << tauf << endl;
-
-
 	T_pts_lower = new double [n_tau_pts];
 	T_pts_upper = new double [n_tau_pts];
 	T_pts = new double [n_tau_pts];
@@ -166,44 +163,22 @@ int main(int argc, char *argv[])
 		all_T_pts[it+n_tau_pts] = T_pts_upper[it];
 		all_mu_pts[it] = mu_pts_lower[it];
 		all_mu_pts[it+n_tau_pts] = mu_pts_upper[it];
-		all_tau_wts[it] = tau_pts_lower[it];
-		all_tau_wts[it+n_tau_pts] = tau_pts_upper[it];
-		all_T_wts[it] = T_pts_lower[it];
-		all_T_wts[it+n_tau_pts] = T_pts_upper[it];
-		all_mu_wts[it] = mu_pts_lower[it];
-		all_mu_wts[it+n_tau_pts] = mu_pts_upper[it];
+
+		all_tau_wts[it] = tau_wts_lower[it];
+		all_tau_wts[it+n_tau_pts] = tau_wts_upper[it];
 	}
 
 	running_integral_array = new double [2*n_tau_pts];
 	set_running_transport_integral(running_integral_array);
 
-	//for (int it = 0; it < 2*n_tau_pts; it++)
-	//	cout << all_tau_pts[it] << "   " << running_integral_array[it] << endl;
+	//for (int it = 0; it < 2*n_tau_pts; ++it)
+	//	cout << "ETA: " << all_tau_pts[it] << "   " << all_T_pts[it] << "   " << all_mu_pts[it] << "   " << running_integral_array[it] << endl;
 
 	//if (1) return (0);
-
-	/*for (int it  = 0; it < n_tau_pts; it++)
-		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it]
-				<< "   " << mu_pts_lower[it]/T_pts_lower[it] << "   " << 1.0-vsigma2(T_pts_lower[it], mu_pts_lower[it]) << endl;
-	for (int it  = 0; it < n_tau_pts; it++)
-		cout << setprecision(15) << it+n_tau_pts << "   " << tau_pts_upper[it] << "   " << T_pts_upper[it] << "   " << mu_pts_upper[it]
-				<< "   " << mu_pts_upper[it]/T_pts_upper[it] << "   " << 1.0-vsigma2(T_pts_upper[it], mu_pts_upper[it]) << endl;*/
-
-	//cout << tauf << "   " << sPERn << "   " << sc/nc << endl;
-
-	/*for (int ik = 0; ik < n_k_pts; ++ik)
-	{
-		double k = k_pts[ik];
-		cout << chosen_trajectory + 1 << "   " << k << "   " << (Ftilde_n(k)*Ftilde_n(-k)).real()
-				<< "   " << Gtilde_n(k, tauf).real() << "   " << Gtilde_n(k, tauf).imag() << "   " << Ctilde_n_n(k).real() << endl;
-	}
-
-	if (1) return (0);*/
 
 	if (do_1p_calc)
 	{
 		double norm = integrate_1D(norm_int, xi_pts_minf_inf, xi_wts_minf_inf, n_xi_pts);
-		//cout << "norm = " << setprecision(15) << norm << endl;
 
 		vector<complex<double> > Fts_vec, Fto_vec, Ftn_vec;
 		vector<complex<double> > Ctss_vec, Ctso_vec, Ctsn_vec, Ctos_vec, Ctoo_vec, Cton_vec, Ctns_vec, Ctno_vec, Ctnn_vec;
@@ -212,6 +187,7 @@ int main(int argc, char *argv[])
 		{
 			double k = k_pts[ik];
 			current_kwt = k_wts[ik];
+			current_ik = ik;
 			Fts_vec.push_back(Ftilde_s(k));
 			Fto_vec.push_back(Ftilde_omega(k));
 			Ftn_vec.push_back(Ftilde_n(k));
@@ -236,18 +212,6 @@ int main(int argc, char *argv[])
 			{
 				double k = k_pts[ik];
 				current_kwt = k_wts[ik];
-				/*complex<double> Fts = Ftilde_s(k);
-				complex<double> Fto = Ftilde_omega(k);
-				complex<double> Ftn = Ftilde_n(k);
-				complex<double> Ctss = Ctilde_s_s(k);
-				complex<double> Ctso = Ctilde_s_omega(k);
-				complex<double> Ctsn = Ctilde_s_n(k);
-				complex<double> Ctos = Ctilde_omega_s(k);
-				complex<double> Ctoo = Ctilde_omega_omega(k);
-				complex<double> Cton = Ctilde_omega_n(k);
-				complex<double> Ctns = Ctilde_n_s(k);
-				complex<double> Ctno = Ctilde_n_omega(k);
-				complex<double> Ctnn = Ctilde_n_n(k);*/
 				complex<double> Fts = Fts_vec[ik];
 				complex<double> Fto = Fto_vec[ik];
 				complex<double> Ftn = Ftn_vec[ik];
@@ -282,11 +246,7 @@ int main(int argc, char *argv[])
 				sum22 += k_wts[ik] * exp(i * k * Delta_y) * Ftn * conj(Ftn) * Ctnn;
 			}
 
-			//complex<double> result = (exp(muf/Tf)*ds*tauf*Tf / hbarC / (2.0*M_PI*M_PI * norm)) * sum;
 			complex<double> result = (exp(mu_part/Tf)*ds*tauf*Tf / (2.0*M_PI*M_PI * norm)) * sum;
-			//cerr << "SUMMARY: " << Delta_y << "   " << sum00.real() << "   " << sum01.real() << "   " << sum02.real() << "   "
-			//		<< sum10.real() << "   " << sum11.real() << "   " << sum12.real() << "   " << sum20.real() << "   "
-			//		<< sum21.real() << "   " << sum22.real() << "   " << sum.real() << "   " << result.real() << endl;
 			cout << setprecision(15) << Delta_y << "   " << 1.0*result.real() << endl;
 		}
 	}

@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
     tmp = gauss_quadrature(n_tau_pts, 1, 0.0, 0.0, tauc, tauf, tau_pts_upper, tau_wts_upper);
 	populate_T_and_mu_vs_tau_part2();
 
-	for (int it = 0; it < n_tau_pts; it++)
+	/*for (int it = 0; it < n_tau_pts; it++)
 	{
 		double T_loc = T_pts_lower[it];
 		double mu_loc = mu_pts_lower[it];
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 		double result = Delta_lambda(T_loc, mu_loc)*T_loc*arg*arg;
 		cout << setprecision(15) << it << "   " << tau_pts_upper[it] << "   " << T_pts_upper[it] << "   " << mu_pts_upper[it] << "   " << result << endl;
 	}
-	if (1) return (0);
+	if (1) return (0);*/
 
 	/*for (int it  = 0; it < n_tau_pts; it++)
 		cout << setprecision(15) << it << "   " << tau_pts_lower[it] << "   " << T_pts_lower[it] << "   " << mu_pts_lower[it]

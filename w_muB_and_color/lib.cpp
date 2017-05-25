@@ -77,7 +77,7 @@ double integrate_2D(double (*f)(double, double), double Lx, double Ly, int nx, i
 }*/
 
 // some interpolation routines here
-double interpolate1D(double * x, double * y, double x0, long size, int kind, bool uniform_spacing, bool returnflag /*= false*/, double default_return_value /* = 0*/)
+double interpolate1D(double * x, double * y, double x0, long size, int kind, bool uniform_spacing, int returnflag /*= false*/, double default_return_value /* = 0*/)
 {
 // kind == 0: linear interpolation
 // kind == 1: cubic interpolation
@@ -110,7 +110,7 @@ double interpolate1D(double * x, double * y, double x0, long size, int kind, boo
 }
 
 //**********************************************************************
-double interpLinearDirect(double * x, double * y, double x0, long size, bool returnflag /*= false*/, double default_return_value /* = 0*/)
+double interpLinearDirect(double * x, double * y, double x0, long size, int returnflag /*= false*/, double default_return_value /* = 0*/)
 // Returns the interpreted value of y=y(x) at x=x0 using linear interpolation method.
 // -- x,y: the independent and dependent tables; x is assumed to be equal spaced and increasing
 // -- x0: where the interpolation should be performed
@@ -126,25 +126,42 @@ double interpLinearDirect(double * x, double * y, double x0, long size, bool ret
 
 	if (idx<0 || idx>=size-1)
 	{
-		if (!returnflag)	//i.e., if returnflag is false, exit
+		switch (returnflag)	//i.e., if returnflag is false, exit
 		{
-			cout    << "interpLinearDirect: x0 out of bounds." << endl
-				<< "x ranges from " << x[0] << " to " << x[size-1] << ", "
-				<< "x0=" << x0 << ", " << "dx=" << dx << ", " << "idx=" << idx << endl;
-			exit(1);
+			case 0:
+			{
+				cout    << "interpLinearDirect: x0 out of bounds." << endl
+					<< "x ranges from " << x[0] << " to " << x[size-1] << ", "
+					<< "x0=" << x0 << ", " << "dx=" << dx << ", " << "idx=" << idx << endl;
+				exit(1);
+				break;
+			}
+			case 1:
+			{
+				idx = (idx<0) ? 0 : size-2;	//uses extrapolation
+				break;
+			}
+			case 2:
+			{
+				return default_return_value;
+				break;
+			}
+			default:
+			{
+				cout    << "interpLinearDirect: x0 out of bounds." << endl
+					<< "x ranges from " << x[0] << " to " << x[size-1] << ", "
+					<< "x0=" << x0 << ", " << "dx=" << dx << ", " << "idx=" << idx << endl;
+				exit(1);
+				break;
+			}
 		}
-		else
-		{
-			idx = (idx<0) ? 0 : size-2;	//uses extrapolation
-		}
-		//else return default_return_value;
 	}
 
   return y[idx] + (y[idx+1]-y[idx])/dx*(x0-x[idx]);
 }
 
 //**********************************************************************
-double interpLinearNondirect(double * x, double * y, double x0, long size, bool returnflag /*= false*/, double default_return_value /* = 0*/)
+double interpLinearNondirect(double * x, double * y, double x0, long size, int returnflag /*= false*/, double default_return_value /* = 0*/)
 // Returns the interpreted value of y=y(x) at x=x0 using linear interpolation method.
 // -- x,y: the independent and dependent tables; x is assumed to be increasing but not equal spaced
 // -- x0: where the interpolation should be performed
@@ -159,25 +176,42 @@ double interpLinearNondirect(double * x, double * y, double x0, long size, bool 
 	long idx = binarySearch(x, size, x0, true);
 	if (idx<0 || idx>=size-1)
 	{
-		if (!returnflag)	//i.e., if returnflag is false, exit
+		switch (returnflag)	//i.e., if returnflag is false, exit
 		{
-			cout    << "interpLinearNondirect: x0 out of bounds." << endl
-				<< "x ranges from " << x[0] << " to " << x[size-1] << ", "
-				<< "x0=" << x0 << ", " << "dx=" << dx << ", " << "idx=" << idx << endl;
-			exit(1);
+			case 0:
+			{
+				cout    << "interpLinearNondirect: x0 out of bounds." << endl
+					<< "x ranges from " << x[0] << " to " << x[size-1] << ", "
+					<< "x0=" << x0 << ", " << "dx=" << dx << ", " << "idx=" << idx << endl;
+				exit(1);
+				break;
+			}
+			case 1:
+			{
+				idx = (idx<0) ? 0 : size-2;	//uses extrapolation
+				break;
+			}
+			case 2:
+			{
+				return default_return_value;
+				break;
+			}
+			default:
+			{
+				cout    << "interpLinearNondirect: x0 out of bounds." << endl
+					<< "x ranges from " << x[0] << " to " << x[size-1] << ", "
+					<< "x0=" << x0 << ", " << "dx=" << dx << ", " << "idx=" << idx << endl;
+				exit(1);
+				break;
+			}
 		}
-		else
-		{
-			idx = (idx<0) ? 0 : size-2;	//uses extrapolation
-		}
-		//else return default_return_value;
 	}
 
 	return y[idx] + (y[idx+1]-y[idx])/(x[idx+1]-x[idx])*(x0-x[idx]);
 }
 
 //**********************************************************************
-double interpCubicDirect(double * x, double * y, double x0, long size, bool returnflag /*= false*/, double default_return_value /* = 0*/)
+double interpCubicDirect(double * x, double * y, double x0, long size, int returnflag /*= 0(false)*/, double default_return_value /* = 0*/)
 // Returns the interpreted value of y=y(x) at x=x0 using cubic polynomial interpolation method.
 // -- x,y: the independent and dependent tables; x is assumed to be equal spaced and increasing
 // -- x0: where the interpolation should be performed
@@ -193,18 +227,34 @@ double interpCubicDirect(double * x, double * y, double x0, long size, bool retu
 
 	if (idx < 0 || idx >= size-1)
 	{
-		if (!returnflag)	//i.e., if returnflag is false, exit
+		switch (returnflag)
 		{
-			cerr << "interpCubicDirect(): index out of range!  Aborting!" << endl
-				<< "interpCubicDirect(): size = " << size << ", x0 = " << x0 << ", " << "dx=" << dx << ", " << "idx=" << idx << endl;
-			exit(1);
+			case 0:
+			{
+				cerr << "interpCubicDirect(): index out of range!  Aborting!" << endl
+					<< "interpCubicDirect(): size = " << size << ", x0 = " << x0 << ", " << "dx=" << dx << ", " << "idx=" << idx << endl;
+				exit(1);
+				break;
+			}
+			case 1:
+			{
+				idx = (idx<0) ? 0 : size-2;	//uses linear extrapolation
+				return y[idx] + (y[idx+1]-y[idx])/(x[idx+1]-x[idx])*(x0-x[idx]);
+				break;
+			}
+			case 2:
+			{
+				return default_return_value;
+				break;
+			}
+			default:
+			{
+				cerr << "interpCubicDirect(): index out of range!  Aborting!" << endl
+					<< "interpCubicDirect(): size = " << size << ", x0 = " << x0 << ", " << "dx=" << dx << ", " << "idx=" << idx << endl;
+				exit(1);
+				break;
+			}
 		}
-		else
-		{
-			idx = (idx<0) ? 0 : size-2;	//uses linear extrapolation
-			return y[idx] + (y[idx+1]-y[idx])/(x[idx+1]-x[idx])*(x0-x[idx]);
-		}
-		//else return default_return_value;
 	}
 
   if (idx==0)
@@ -233,7 +283,7 @@ double interpCubicDirect(double * x, double * y, double x0, long size, bool retu
 }
 
 //**********************************************************************
-double interpCubicNonDirect(double * x, double * y, double xi, long size, bool returnflag /*= false*/, double default_return_value /* = 0*/)
+double interpCubicNonDirect(double * x, double * y, double xi, long size, int returnflag /*= false*/, double default_return_value /* = 0*/)
 // Returns the interpreted value of y=y(x) at x=x0 using cubic polynomial interpolation method.
 // -- x,y: the independent and dependent double x0ables; x is *NOT* assumed to be equal spaced but it has to be increasing
 // -- xi: where the interpolation should be performed
@@ -248,17 +298,33 @@ double interpCubicNonDirect(double * x, double * y, double xi, long size, bool r
 
 	if (idx < 0 || idx >= size-1)
 	{
-		if (!returnflag)	//i.e., if returnflag is false, exit
+		switch (returnflag)	//i.e., if returnflag is false, exit
 		{
-			cerr << "interpCubicNonDirect(): index out of range!  Aborting!" << endl
-				<< "interpCubicNonDirect(): size = " << size << ", x0 = " << xi << ", " << "idx=" << idx << endl;
-			exit(1);
+			case 0:
+			{
+				cerr << "interpCubicNonDirect(): index out of range!  Aborting!" << endl
+					<< "interpCubicNonDirect(): size = " << size << ", x0 = " << xi << ", " << "idx=" << idx << endl;
+				exit(1);
+				break;
+			}
+			case 1:
+			{
+				idx = (idx<0) ? 0 : size-2;	//uses linear extrapolation
+				break;
+			}
+			case 2:
+			{
+				return default_return_value;
+				break;
+			}
+			default:
+			{
+				cerr << "interpCubicNonDirect(): index out of range!  Aborting!" << endl
+					<< "interpCubicNonDirect(): size = " << size << ", x0 = " << xi << ", " << "idx=" << idx << endl;
+				exit(1);
+				break;
+			}
 		}
-		else
-		{
-			idx = (idx<0) ? 0 : size-2;	//uses linear extrapolation
-		}
-		//else return default_return_value;
 	}
 
   if (idx==0)

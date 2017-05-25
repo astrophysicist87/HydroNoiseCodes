@@ -28,6 +28,8 @@ void inline debugger(int cln, const char* cfn)
 
 extern const double hbarC;
 
+bool white_noise = false;
+
 int integration_mode = 1;
 bool include_baryon_chemical_potential_fluctations = true;
 extern const double mu_pion;
@@ -38,8 +40,8 @@ extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf, s_at_mu_part;
 extern double mByT, alpha0, psi0;
 extern double chi_tilde_mu_mu, chi_tilde_T_mu, chi_tilde_T_T, Delta;
 
-extern double screw_it_up_factor, current_kwt, current_DY;
-extern int current_itau;
+extern double current_kwt, current_DY;
+extern int current_itau, current_ik;
 
 extern const int n_xi_pts;
 extern const int n_k_pts;
@@ -471,7 +473,7 @@ inline void set_running_transport_integral(double * running_integral_array)
 			sum += x_wts[ix] * hw * exp(t_loc / tauC) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0) / t_loc;
 			//sum += x_wts[ix] * hw * exp(t_loc / tauC);	//use this line to check that integration works correctly
 		}
-		running_integral_array[it+1] = exp(-t1 / tauC) * ( exp(t0 / tauC) * running_integral_array[it] + sum );
+		running_integral_array[it+1] = exp(-t1 / tauC) * ( tauC * exp(t0 / tauC) * running_integral_array[it] + sum ) / tauC;	//this array contains eta(x) (defined on my whiteboard)
 	}
 
 	delete [] x_pts;
@@ -483,7 +485,13 @@ inline void set_running_transport_integral(double * running_integral_array)
 inline complex<double> colored_tau_integration(complex<double> (*Gtilde_X)(double, double), complex<double> (*Gtilde_Y)(double, double), double k)
 {
 	complex<double> locsum(0,0);
+	
+	const int n_x_pts = 201;	//try this
+	double * x_pts = new double [n_x_pts];
+	double * x_wts = new double [n_x_pts];
+	gauss_quadrature(n_x_pts, 1, 0.0, 0.0, -1.0, 1.0, x_pts, x_wts);
 
+	double delta_tau_lower = -10.0 * tauC, delta_tau_upper = 10.0 * tauC;	//this bounds the interval where the integrand is large-ish
 	for (int itp = 0; itp < 2*n_tau_pts; ++itp)
 	{
 		double tX_loc = all_tau_pts[itp];
@@ -491,22 +499,34 @@ inline complex<double> colored_tau_integration(complex<double> (*Gtilde_X)(doubl
 		double muX_loc = all_mu_pts[itp];
 		complex<double> factor_X = (*Gtilde_X)(k, tX_loc) / tX_loc;
 
+		double tau_lower = max(taui, tX_loc + delta_tau_lower);			//if lower limit goes before beginning of lifetime, just start at tau0
+		double tau_upper = min(tauf, tX_loc + delta_tau_upper);			//if upper limit goes past end of lifetime, just end at tauf
+		double hw_loc = 0.5 * (tau_upper - tau_lower);
+		double cen_loc = 0.5 * (tau_upper + tau_lower);
+
 		complex<double> sum_X = 0.0;
-		for (int itpp = 0; itpp < 2*n_tau_pts; ++itpp)
+		for (int ix = 0; ix < n_x_pts; ++ix)
 		{
-			double tY_loc = all_tau_pts[itpp];
-			double TY_loc = all_T_pts[itpp];
-			double muY_loc = all_mu_pts[itpp];
+			double tY_loc = cen_loc + hw_loc * x_pts[ix];
+			double TY_loc = interpolate1D(all_tau_pts, all_T_pts, tY_loc, 2*n_tau_pts, 0, false, 2);
+			double muY_loc = interpolate1D(all_tau_pts, all_mu_pts, tY_loc, 2*n_tau_pts, 0, false, 2);
 			complex<double> factor_Y = (*Gtilde_Y)(-k, tY_loc) / tY_loc;
 
-			//double min_tp_tpp = min(tX_loc, tY_loc);
-			int min_itp_itpp = min(itp, itpp);
+			double min_tp_tpp = min(tX_loc, tY_loc);
+			double eta_at_min_tp_tpp = interpolate1D(all_tau_pts, running_integral_array, min_tp_tpp, 2*n_tau_pts, 0, false, 2);
+//cout << "CHECK: " << min_tp_tpp << "   " << eta_at_min_tp_tpp << endl;
 
-			double sum_XY = exp(-abs(tX_loc - tY_loc) / tauC) * running_integral_array[min_itp_itpp] / (2.0*tauC);
-			sum_X += all_tau_wts[itpp] * factor_Y * sum_XY;
+//if (current_ik == n_k_pts / 2)
+//	cout << tX_loc << "   " << tY_loc << "   " << abs(tX_loc - tY_loc) << "   " << (tX_loc - tY_loc) / tauC << "   " << exp(-abs(tX_loc - tY_loc) / tauC) / (2.0*tauC) << endl;
+
+			double sum_XY = exp(-abs(tX_loc - tY_loc) / tauC) * eta_at_min_tp_tpp / (2.0*tauC);
+			sum_X += hw_loc * x_wts[ix] * factor_Y * sum_XY;
 		}
 		locsum += all_tau_wts[itp] * factor_X * sum_X;
 	}
+
+	delete [] x_pts;
+	delete [] x_wts;
 
 	return (locsum);
 }
@@ -514,7 +534,10 @@ inline complex<double> colored_tau_integration(complex<double> (*Gtilde_X)(doubl
 inline complex<double> Ctilde_s_s(double k)
 {
 	complex<double> sum(0,0);
-	sum = tau_integration(Gtilde_s, Gtilde_s, k);
+	if (white_noise)
+		sum = tau_integration(Gtilde_s, Gtilde_s, k);
+	else
+		sum = colored_tau_integration(Gtilde_s, Gtilde_s, k);
 
 	return ( sum );	//fm^2
 }
@@ -522,7 +545,10 @@ inline complex<double> Ctilde_s_s(double k)
 inline complex<double> Ctilde_s_omega(double k)
 {
 	complex<double> sum(0,0);
-	sum = tau_integration(Gtilde_s, Gtilde_omega, k);
+	if (white_noise)
+		sum = tau_integration(Gtilde_s, Gtilde_omega, k);
+	else
+		sum = colored_tau_integration(Gtilde_s, Gtilde_omega, k);
 
 	return ( sum );	//fm^2
 }
@@ -530,7 +556,10 @@ inline complex<double> Ctilde_s_omega(double k)
 inline complex<double> Ctilde_s_n(double k)
 {
 	complex<double> sum(0,0);
-	sum = tau_integration(Gtilde_s, Gtilde_n, k);
+	if (white_noise)
+		sum = tau_integration(Gtilde_s, Gtilde_n, k);
+	else
+		sum = colored_tau_integration(Gtilde_s, Gtilde_n, k);
 
 	return ( sum );	//fm^2
 }
@@ -538,7 +567,10 @@ inline complex<double> Ctilde_s_n(double k)
 inline complex<double> Ctilde_omega_s(double k)
 {
 	complex<double> sum(0,0);
-	sum = tau_integration(Gtilde_omega, Gtilde_s, k);
+	if (white_noise)
+		sum = tau_integration(Gtilde_omega, Gtilde_s, k);
+	else
+		sum = colored_tau_integration(Gtilde_omega, Gtilde_s, k);
 
 	return ( sum );	//fm^2
 }
@@ -546,14 +578,20 @@ inline complex<double> Ctilde_omega_s(double k)
 inline complex<double> Ctilde_omega_omega(double k)
 {
 	complex<double> sum(0,0);
-	sum = tau_integration(Gtilde_omega, Gtilde_omega, k);
+	if (white_noise)
+		sum = tau_integration(Gtilde_omega, Gtilde_omega, k);
+	else
+		sum = colored_tau_integration(Gtilde_omega, Gtilde_omega, k);
 	return ( sum );	//fm^2
 }
 
 inline complex<double> Ctilde_omega_n(double k)
 {
 	complex<double> sum(0,0);
-	sum = tau_integration(Gtilde_omega, Gtilde_n, k);
+	if (white_noise)
+		sum = tau_integration(Gtilde_omega, Gtilde_n, k);
+	else
+		sum = colored_tau_integration(Gtilde_omega, Gtilde_n, k);
 
 	return ( sum );	//fm^2
 }
@@ -561,7 +599,10 @@ inline complex<double> Ctilde_omega_n(double k)
 inline complex<double> Ctilde_n_s(double k)
 {
 	complex<double> sum(0,0);
-	sum = tau_integration(Gtilde_n, Gtilde_s, k);
+	if (white_noise)
+		sum = tau_integration(Gtilde_n, Gtilde_s, k);
+	else
+		sum = colored_tau_integration(Gtilde_n, Gtilde_s, k);
 
 	return ( sum );	//fm^2
 }
@@ -569,7 +610,10 @@ inline complex<double> Ctilde_n_s(double k)
 inline complex<double> Ctilde_n_omega(double k)
 {
 	complex<double> sum(0,0);
-	sum = tau_integration(Gtilde_n, Gtilde_omega, k);
+	if (white_noise)
+		sum = tau_integration(Gtilde_n, Gtilde_omega, k);
+	else
+		sum = colored_tau_integration(Gtilde_n, Gtilde_omega, k);
 
 	return ( sum );	//fm^2
 }
@@ -577,7 +621,10 @@ inline complex<double> Ctilde_n_omega(double k)
 inline complex<double> Ctilde_n_n(double k)
 {
 	complex<double> sum(0,0);
-	sum = tau_integration(Gtilde_n, Gtilde_n, k);
+	if (white_noise)
+		sum = tau_integration(Gtilde_n, Gtilde_n, k);
+	else
+		sum = colored_tau_integration(Gtilde_n, Gtilde_n, k);
 
 	return ( sum );	//fm^2
 }
