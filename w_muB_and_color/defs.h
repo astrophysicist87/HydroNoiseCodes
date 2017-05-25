@@ -34,7 +34,7 @@ int integration_mode = 1;
 bool include_baryon_chemical_potential_fluctations = true;
 extern const double mu_pion;
 extern double mu_part, mu_proton;
-extern const double tauC;	//timescale of colored noise
+extern double tauC;	//timescale of colored noise
 
 extern double vs, Neff, tauf, taui, Tf, Ti, nu, nuVB, ds, m, sf, s_at_mu_part;
 extern double mByT, alpha0, psi0;

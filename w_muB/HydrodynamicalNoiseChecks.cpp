@@ -20,7 +20,7 @@ using namespace std;
 bool do_1p_calc;
 bool do_HBT_calc;
 bool scale_out_y_dependence = false;
-const int particle_to_study = 2;	//1 is pion, 2 is proton
+const int particle_to_study = 1;	//1 is pion, 2 is proton
 
 const double hbarC = 197.33;
 const double k_infinity = 10.0;

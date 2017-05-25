@@ -256,6 +256,83 @@ inline complex<double> tau_integration(complex<double> (*Gtilde_X)(double), comp
 	return (result);
 }
 
+inline void set_running_transport_integral(double * running_integral_array)
+{
+	const int n_x_pts = 11;
+	double * x_pts = new double [n_x_pts];
+	double * x_wts = new double [n_x_pts];
+	gauss_quadrature(n_x_pts, 1, 0.0, 0.0, -1.0, 1.0, x_pts, x_wts);
+
+	running_integral_array[0] = 0.0;
+	for (int it = 0; it < 2*n_tau_pts-1; ++it)
+	{
+		double sum = 0.0;
+		double t0 = all_tau_pts[it], t1 = all_tau_pts[it+1];
+		double cen = 0.5*(t0+t1);
+		double hw = 0.5*(t1-t0);
+		for (int ix = 0; ix < n_x_pts; ++ix)
+		{
+			double t_loc = cen + hw * x_pts[ix];
+			double T_loc = interpolate1D(all_tau_pts, all_T_pts, t_loc, 2*n_tau_pts, 0, false);
+			double mu_loc = interpolate1D(all_tau_pts, all_mu_pts, t_loc, 2*n_tau_pts, 0, false);
+			double arg = n(T_loc, mu_loc)*T_loc / ( s(T_loc, mu_loc)*w(T_loc, mu_loc) );
+			sum += x_wts[ix] * hw * exp(t_loc / tauC) * Delta_lambda(T_loc, mu_loc) * pow(arg, 2.0) / t_loc;
+			//sum += x_wts[ix] * hw * exp(t_loc / tauC);	//use this line to check that integration works correctly
+		}
+		running_integral_array[it+1] = exp(-t1 / tauC) * ( tauC * exp(t0 / tauC) * running_integral_array[it] + sum ) / tauC;	//this array contains eta(x) (defined on my whiteboard)
+	}
+
+	delete [] x_pts;
+	delete [] x_wts;
+
+	return;
+}
+
+inline complex<double> colored_tau_integration(complex<double> (*Gtilde_X)(double, double), complex<double> (*Gtilde_Y)(double, double), double k)
+{
+	complex<double> locsum(0,0);
+	
+	const int n_x_pts = 201;	//try this
+	double * x_pts = new double [n_x_pts];
+	double * x_wts = new double [n_x_pts];
+	gauss_quadrature(n_x_pts, 1, 0.0, 0.0, -1.0, 1.0, x_pts, x_wts);
+
+	double delta_tau_lower = -10.0 * tauC, delta_tau_upper = 10.0 * tauC;	//this bounds the interval where the integrand is large-ish
+	for (int itp = 0; itp < 2*n_tau_pts; ++itp)
+	{
+		double tX_loc = all_tau_pts[itp];
+		double TX_loc = all_T_pts[itp];
+		double muX_loc = all_mu_pts[itp];
+		complex<double> factor_X = (*Gtilde_X)(k, tX_loc) / tX_loc;
+
+		double tau_lower = max(taui, tX_loc + delta_tau_lower);			//if lower limit goes before beginning of lifetime, just start at tau0
+		double tau_upper = min(tauf, tX_loc + delta_tau_upper);			//if upper limit goes past end of lifetime, just end at tauf
+		double hw_loc = 0.5 * (tau_upper - tau_lower);
+		double cen_loc = 0.5 * (tau_upper + tau_lower);
+
+		complex<double> sum_X = 0.0;
+		for (int ix = 0; ix < n_x_pts; ++ix)
+		{
+			double tY_loc = cen_loc + hw_loc * x_pts[ix];
+			double TY_loc = interpolate1D(all_tau_pts, all_T_pts, tY_loc, 2*n_tau_pts, 0, false, 2);
+			double muY_loc = interpolate1D(all_tau_pts, all_mu_pts, tY_loc, 2*n_tau_pts, 0, false, 2);
+			complex<double> factor_Y = (*Gtilde_Y)(-k, tY_loc) / tY_loc;
+
+			double min_tp_tpp = min(tX_loc, tY_loc);
+			double eta_at_min_tp_tpp = interpolate1D(all_tau_pts, running_integral_array, min_tp_tpp, 2*n_tau_pts, 0, false, 2);
+
+			double sum_XY = exp(-abs(tX_loc - tY_loc) / tauC) * eta_at_min_tp_tpp / (2.0*tauC);
+			sum_X += hw_loc * x_wts[ix] * factor_Y * sum_XY;
+		}
+		locsum += all_tau_wts[itp] * factor_X * sum_X;
+	}
+
+	delete [] x_pts;
+	delete [] x_wts;
+
+	return (locsum);
+}
+
 inline complex<double> Ctilde_n_n(double k, bool use_lattice_transport, double two_pi_DQ_T)
 {
 	complex<double> sum(0,0);

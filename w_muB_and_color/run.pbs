@@ -1,0 +1,12 @@
+#!/bin/bash
+#PBS -l walltime=168:00:00
+#PBS -l nodes=1:ppn=1
+#PBS -j oe
+#PBS -S /bin/bash
+#PBS -p 10
+
+ulimit -n 1000
+
+cd $v0
+
+./hydroNoiseWithColor.e $v1 $v2 $v3 $v4 $v5 &> $v6
